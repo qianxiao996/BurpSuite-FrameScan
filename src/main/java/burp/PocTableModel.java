@@ -3,7 +3,7 @@ package burp;
 import javax.swing.table.AbstractTableModel;
 
 public  class PocTableModel extends AbstractTableModel {
-    private final String[] columnNames = {"序号", "漏洞名称", "URL", "匹配方式","正则表达式"};
+    private final String[] columnNames = {"序号", "漏洞名称", "URL", "匹配位置","匹配方式","匹配值","匹配状态码"};
 
     @Override
     public int getRowCount()
@@ -35,7 +35,11 @@ public  class PocTableModel extends AbstractTableModel {
             case 3:
                 return pocEntry.scope;
             case 4:
-                return pocEntry.regex;
+                return pocEntry.match_method;
+            case 5:
+                return pocEntry.match_value;
+            case 6:
+                return pocEntry.status_code;
             default:
                 return "";
         }
@@ -68,6 +72,10 @@ public  class PocTableModel extends AbstractTableModel {
                 return String.class;
             case 4:
                 return String.class;
+            case 5:
+                return String.class;
+            case 6:
+                return Integer.class;
             default:
                 return String.class;
         }

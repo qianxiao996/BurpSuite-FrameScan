@@ -1,6 +1,7 @@
 package burp;
 
 import javax.swing.table.AbstractTableModel;
+import java.awt.event.ActionEvent;
 
 public class LogTableModel  extends AbstractTableModel {
     private final String[] columnNames = {"序号", "来源", "URL", "返回包长度", "状态码","精确扫描结果"};
@@ -44,7 +45,13 @@ public class LogTableModel  extends AbstractTableModel {
                 return String.class;
         }
     }
-
+    public  void ClearData() {
+            BurpExtender.table_log_data.clear();
+//            int rowCount = logTable.getRowCount();
+//            model.fireTableRowsDeleted(0, rowCount);
+            fireTableDataChanged();
+//
+    }
     @Override
     public Object getValueAt(int rowIndex, int columnIndex)
     {
