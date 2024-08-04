@@ -1,0 +1,28 @@
+//python3  -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. scan.proto
+//protoc -I. --java_out=. --grpc-java_out=. scan.proto
+// 语法版本声明，必须放在非注释的第一行
+syntax = "proto3";
+
+// 包名定义, Python中使用时可以省略不写
+package burp.rpc;
+option java_multiple_files = true;
+/*
+`message`是用来定义传输的数据的格式的, 等号后面的是字段编号
+消息定义中的每个字段都有唯一的编号
+总体格式类似于Python中定义一个类或者Golang中定义一个结构体
+*/
+message Poc_Request {
+    string poc_type=1;
+    string url = 2;
+    string poc = 3;
+}
+
+message Poc_Response {
+    bool is_success = 1;
+    string  result = 2;
+}
+// `service` 是用来给gRPC服务定义方法的, 格式固定, 类似于Golang中定义一个接口
+service poc {
+    // 一元模式(在一次调用中, 客户端只能向服务器传输一次请求数据, 服务器也只能返回一次响应)
+    rpc pocscan(Poc_Request) returns (Poc_Response);
+}
