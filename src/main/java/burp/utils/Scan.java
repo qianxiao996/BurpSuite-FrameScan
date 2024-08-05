@@ -147,18 +147,18 @@ public class Scan {
                     }else if (Objects.equals(poc.plugin_type, "Python Poc")) {
                         temp = Scan_Python_Poc(messageInfo, toolFlag, list.get(urlLength), poc);
                     }
-                    //添加结果
-                    if (temp != null && !temp.vuln_scan_result.isEmpty()) {
-                        printDebug("【"+poc.plugin_type+"】【Host】"+list.get(urlLength)+"【Poc Scan】"+poc.name+"【Result】"+temp.vuln_scan_result);
-                        temp.finger_scan_result = finger;
-                        temp.vuln_scan_result = poc.name;
-                        model.addValueAt(temp);
-                        model.fireTableDataChanged();
-                    }else if(!finger.isEmpty()){
-                        if (finger_scan_result != null) {
-                            finger_scan_result.finger_scan_result = finger;
-                            printDebug("【" + poc.plugin_type + "】【Host】" + list.get(urlLength) + "【Poc Scan】" + poc.name + "【Result】" + finger_scan_result.finger_scan_result);
+                    if (temp != null){
+                        printErr(temp.toString());
+                        if(!temp.vuln_scan_result.isEmpty()){
+                            printDebug("【"+poc.plugin_type+"】【Host】"+list.get(urlLength)+"【Poc Scan】"+poc.name+"【Result】"+temp.vuln_scan_result);
+                            temp.finger_scan_result = finger;
+                            temp.vuln_scan_result = poc.name;
+                            model.addValueAt(temp);
+                            model.fireTableDataChanged();
                         }
+                    } else if (!finger.isEmpty() && finger_scan_result!=null) {
+                        finger_scan_result.finger_scan_result = finger;
+                        printDebug("【" + poc.plugin_type + "】【Host】" + list.get(urlLength) + "【Poc Scan】" + poc.name + "【Result】" + finger_scan_result.finger_scan_result);
                         model.addValueAt(finger_scan_result);
                         model.fireTableDataChanged();
                     }else{
@@ -254,7 +254,7 @@ public class Scan {
         try{
             Poc_Request requests = Poc_Request.newBuilder()
                     .setPocType("Python")
-                    .setUrl(host_url)
+                    .setUrl((String)host_url)
                     .setPoc((String) poc.plugins_data)
                     .build();
             Poc_Response response = client.pocscan(requests);

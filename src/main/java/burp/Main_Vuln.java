@@ -731,6 +731,7 @@ public class Main_Vuln{
         vuln_disenable_finger_poc_combox.removeAllItems();
         for(String i :items){
             vuln_poc_combox.addItem(i);
+            vuln_disenable_finger_poc_combox.addItem(i);
         }
         enable_poc_list.clear();
         enable_poc_list =  Poc.Get_Poc(enable_poc_str);

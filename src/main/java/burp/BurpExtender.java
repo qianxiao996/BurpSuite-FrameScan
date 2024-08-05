@@ -27,7 +27,7 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
     public static String BurpConfigPath ;
     public static PrintWriter stdout;
     String Tools_Name ="FrameScan";
-    String CONFIGVERSION = "v2.2";
+    String CONFIGVERSION = "v2.3";
     //
     public static String SQL_DB_FILE="data.db";
 
