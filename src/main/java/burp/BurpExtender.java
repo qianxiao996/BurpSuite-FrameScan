@@ -1,11 +1,8 @@
 package burp;
-import burp.utils.Scan;
-import org.yaml.snakeyaml.Yaml;
+import burp.scan.Scan;
 
 import java.awt.*;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.*;
@@ -13,8 +10,8 @@ import java.util.List;
 import javax.swing.*;
 import burp.utils.Config;
 
+import static burp.Main_Vuln.app_title;
 import static burp.Main_Vuln.channel;
-import static burp.Main_Vuln.load_config;
 
 
 public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScannerCheck, IMessageEditorController,IContextMenuFactory,IExtensionStateListener
@@ -26,12 +23,7 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
 
     public static String BurpConfigPath ;
     public static PrintWriter stdout;
-    String Tools_Name ="FrameScan";
-    String CONFIGVERSION = "v2.3";
-    //
-    public static String SQL_DB_FILE="data.db";
 
-    public static String Config_FILE="config.yml";
 
 
     // implement IBurpExtender
@@ -50,7 +42,7 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
         helpers = callbacks.getHelpers();
 
         // set our extension name
-        callbacks.setExtensionName(Tools_Name+" "+CONFIGVERSION);
+        callbacks.setExtensionName(Main_Vuln.app_name);
 
         // create our UI
         SwingUtilities.invokeLater(new Runnable()
@@ -65,16 +57,10 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
                 BurpConfigPath = callbacks.getExtensionFilename().substring(0, (callbacks.getExtensionFilename().lastIndexOf(File.separator))) + File.separator;
                 // main split pane
                 //配置文件
-                try {
-                    String Config_PATH = String.format("%s/%s", BurpExtender.BurpConfigPath, Config_FILE);
-                    Map<String, Object> temp_config = Config.read_config(Config_PATH);
-                    Main_Vuln.Config_PATH = Config_PATH;
-                    Main_Vuln.Global_Config = temp_config;
-                } catch (IOException e) {
-                    stdout.println(Arrays.toString(e.getStackTrace()));
-                }
+                String Config_PATH = String.format("%s/%s", BurpExtender.BurpConfigPath, Main_Vuln.Config_FILE);
+                Main_Vuln.load_config_bypath(Config_PATH);
                 //sql数据库物理路径
-                Main_Vuln.SQL_DB_PATH = Paths.get(BurpConfigPath, SQL_DB_FILE).toString();
+                Main_Vuln.SQL_DB_PATH = Paths.get(BurpConfigPath, Main_Vuln.SQL_DB_FILE).toString();
 
                 //tab
                 JTabbedPane tab = new JTabbedPane();
@@ -94,13 +80,11 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
                 callbacks.registerHttpListener(BurpExtender.this);
                 callbacks.registerScannerCheck(BurpExtender.this);
                 callbacks.registerContextMenuFactory(BurpExtender.this);
-
-
             }
 
         });
         stdout.println("Success..");
-        stdout.println(Tools_Name+" "+CONFIGVERSION+" by qianxiao996!\nGithub:https://github.com/qianxiao996");
+        stdout.println(app_title);
     }
 
 
@@ -108,7 +92,7 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
     @Override
     public String getTabCaption()
     {
-        return Tools_Name;
+        return Main_Vuln.app_name;
     }
 
     @Override

@@ -50,8 +50,7 @@ public  class PocTableModel extends AbstractTableModel {
         if (rowIndex < 0 || rowIndex >= all_poc_data.size()) {
             return "";
         }
-        PocEntry pocEntry = all_poc_data.get(rowIndex);
-        return pocEntry;
+        return all_poc_data.get(rowIndex);
     }
 
     @Override
@@ -64,17 +63,12 @@ public  class PocTableModel extends AbstractTableModel {
         switch (columnIndex)
         {
             case 0:
-                return Integer.class;
-            case 1:
-                return String.class;
-            case 2:
-                return String.class;
-            case 3:
-                return String.class;
             case 4:
                 return Integer.class;
+            case 1:
+            case 3:
+            case 2:
             case 5:
-                return String.class;
             default:
                 return String.class;
         }
@@ -83,12 +77,10 @@ public  class PocTableModel extends AbstractTableModel {
         return  all_poc_data;
     }
 
+
     public  void ClearData() {
         all_poc_data.clear();
-//            int rowCount = logTable.getRowCount();
-//            model.fireTableRowsDeleted(0, rowCount);
         fireTableDataChanged();
-//
     }
 
     public   void  addValueAt(PocEntry value)
@@ -97,4 +89,12 @@ public  class PocTableModel extends AbstractTableModel {
         fireTableDataChanged();
     }
 
+    public PocEntry getValueByPocid(int id){
+        for(PocEntry i :all_poc_data){
+            if(i.id==id){
+                return i;
+            }
+        }
+        return  null;
+    }
 }

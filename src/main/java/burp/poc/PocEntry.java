@@ -7,11 +7,6 @@ public class PocEntry
 
     public String name ;
 
-//    public String url ;
-//    public String scope;
-//    public String match_method;
-//    public String match_value;
-//    public int status_code;
     public String group;
     public int dir_count;
     public String plugin_type;

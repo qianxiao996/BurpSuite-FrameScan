@@ -54,8 +54,7 @@ public  class FingerTableModel extends AbstractTableModel {
         if (rowIndex < 0 || rowIndex >= all_finger_data.size()) {
             return "";
         }
-        FingerEntry fingerEntry = all_finger_data.get(rowIndex);
-        return fingerEntry;
+        return all_finger_data.get(rowIndex);
     }
 
     @Override
@@ -68,19 +67,13 @@ public  class FingerTableModel extends AbstractTableModel {
         switch (columnIndex)
         {
             case 0:
-                return Integer.class;
-            case 1:
-                return String.class;
-            case 2:
-                return String.class;
-            case 3:
-                return String.class;
-            case 4:
-                return String.class;
             case 5:
-                return String.class;
+                return Integer.class;
+            case 4:
+            case 3:
+            case 2:
             case 6:
-                return String.class;
+            case 1:
             default:
                 return String.class;
         }
@@ -91,10 +84,7 @@ public  class FingerTableModel extends AbstractTableModel {
 
     public  void ClearData() {
         all_finger_data.clear();
-//            int rowCount = logTable.getRowCount();
-//            model.fireTableRowsDeleted(0, rowCount);
         fireTableDataChanged();
-//
     }
 
     public   void  addValueAt(FingerEntry value)

@@ -1,7 +1,7 @@
 AS=as
 CC="C:\Users\qianxiao996\AppData\Local\Nuitka\Nuitka\Cache\downloads\ccache\v4.6\ccache.exe" "C:\Users\qianxiao996\AppData\Local\Nuitka\Nuitka\Cache\downloads\gcc\x86_64\11.3.0-14.0.3-10.0.0-msvcrt-r3\mingw64\bin\gcc.exe"
 CCACHE_DIR=C:\Users\QIANXI~1\AppData\Local\Nuitka\Nuitka\Cache\ccache
-CCACHE_LOGFILE=E:\code\java-burpsuit\FrameScan\Grpc\rpc_server.onefile-build\ccache-6172.txt
+CCACHE_LOGFILE=E:\code\java-burpsuit\FrameScan\Grpc\rpc_server.onefile-build\ccache-15312.txt
 CCCOM=$CC -o $TARGET -c $CFLAGS $CCFLAGS $_CCCOMCOM $SOURCES
 CFILESUFFIX=.c
 CPPDEFINES=['_WIN32_WINNT=0x0501', '__NUITKA_NO_ASSERT__', '_NUITKA_ONEFILE_MODE', '_NUITKA_PLUGIN_MULTIPROCESSING_ENABLED=1']

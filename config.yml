@@ -1,0 +1,96 @@
+Is_Proxy: true
+Is_Debug: true
+WhiteEnable: false
+Enable_Poc: true
+Is_Repeater: true
+WhiteList: baidu.com
+BlackList: www.baidu.com
+Enable_Finger: true
+EnablePocList: 高危漏洞,渗透测试,接口泄露,默认分组,信息泄露
+DisenableFingerPocList: Yaml Poc测试,高级HTTP请求测试,Python  Poc测试
+Grpc_Host: localhost
+Grpc_Port: 23333
+Themes: FlatIntelliJLaf
+Simple_HTTP_Request: |
+  methd: GET
+  url: /ddd
+  haders:
+    - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+  body: a=1
+Yaml_Poc: |
+  name: poc-yaml-.DS_Store-info
+  transport: http
+  rules:
+    r1:
+      request:
+        method: GET
+        path: /.DS_Store
+        headers:
+          User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
+      expression: |
+        response.status_code==200
+  output: "发现.DS_Store文件"
+  expression: r1()
+  detail:
+    name: '.DS_Store文件泄露'
+    author: qianxiao996
+    category: 敏感信息泄露
+    subassembly: ALL
+    vuln_id: 无
+    description: '.DS_Store文件泄露'
+    links: []
+Advanced_HTTP_Request: |
+  GET / HTTP/1.1
+  Host: {{Host}}
+  Pragma: no-cache
+  Cache-Control: no-cache
+  User-Agent: {{Random_UserAgent}}
+  Accept-Encoding: gzip, deflate
+  Accept-Language: zh-CN,zh;q=0.9
+  Connection: close
+  Cookie: {{Cookie}}
+
+  {{Body}}
+Python_Poc: "# -*- coding: UTF-8 -*-\n#!/usr/bin/python\nimport sys\nimport requests,argparse,os\n\
+  from urllib.parse import urlparse\ndef vuln_info():\n    vuln_info = {\n       \
+  \ \"vuln_name\":\"POC测试漏洞\",  #漏洞名称\n        'vuln_referer':'http://baidu.com',\
+  \  #漏洞来源\n        'vuln_author':'qianxiao996',  #插件作者\n        'cms_name':'test',#cms_name需\
+  要和上级目录保持一致。扫描器自动添加会调用。GUI版本不会调用\n        'vuln_description':'''漏洞描述''',\n      \
+  \  'vuln_identifier':'''漏洞编号。''',\n        'vuln_class':'漏洞分类',#如：信息泄漏、远程命令执行、任意\
+  文件上传、SQL注入、XML注入、任意文件读取、本地文件包含、认证绕过/未认证、弱口令、目录遍历、其他、反序列化漏洞、OGNL表达式注入、SSRF、后门、任意文\
+  件下载、鉴权绕过、暴力破解、命令注入、路径泄露、XSS、远程文件包含、CSRF、任意文件包含、代码注入、任意文件写入、密码硬编码、文件包含、任意用户注册、缓冲区\
+  溢出、用户枚举漏洞、任意文件删除、任意页面上传、管理权限等\n        'vuln_solution':'''修复建议。''',\n        'FofaQuery_type':'socket',\
+  \ #socket、http\n        'FofaQuery_link':'/', #此处的路径会加在url拼接访问，进行FofaQuery的条件匹配\
+  \ 此处为all为全部页面都检测\n        'FofaQuery_rule':'title=\"百度\"',#header=\"JSESSIONID\"\
+  \ || body=\"Struts Problem Report\" || body=\"There is no Action mapped for namespace\"\
+  \ || body=\"No result defined for action and result input\" || header=\"Servlet\"\
+  \ || header=\"JBoss\",port=\"60001\"\n        #header', 'body', 'title', 'banner','port','banner','service','protocol','server'\n\
+  \        'ispoc':0, #是否有poc  1为有 0为无\n        'isexp':1  #是否有exp   1为有 0为无\n   \
+  \ }\n    return vuln_info\ndef _out(type,text):\n    print(\"[*] \"+type+\":\\n\
+  \    \"+text)\n# func_out 输出函数对象  url：url  hostname：主机地址  port：端口  scheme：服务  heads：\
+  http自定义头信息\n# plugins_temp_data 全局变量，可存储数据至do_exp使用\ndef do_poc(url,hostname,port,scheme,heads={},func_out=_out,plugins_temp_data={}):\n\
+  \    try:\n        #存储数据至do_exp函数使用\n        plugins_temp_data['key']='11'\n\n \
+  \       # func_out('Debug',\"debug信息\")\n        func_out('Error',\"错误信息\",)\n \
+  \       # func_out('Info',\"info信息\")\n        # 返回参数\n        #Result返回是否存在，\n\
+  \        #Result_Info为返回的信息，可以为Paylaod \n        #Debug debug信息 默认不会显示，勾选显示调试信息会\
+  输出此结果\n        #Error_Info无论何时都会输出\n        result = {\"Result\":False,\"Result_Info\"\
+  :\"\"}\n        result['Result'] = True\n        result['Result_Info']= url\n  \
+  \      return result\n    except Exception as e:\n        func_out('Error',str(e)+str(e.__traceback__.tb_lineno)+'行\
+  ')\n\n\n#exp_data\n# {\n#     \"type\":\"cmd\",  #cmd,shell,uploadfile\n#     \"\
+  command\":\"whoami\",  #cmd命令\n#     \"reverse_ip\":\"127.0.0.1\", #反弹shell的ip\n\
+  #     \"reverse_port\":\"8888\", #反弹shell的端口\n#     \"filename\":\"conf.php\", #写\
+  入文件的名字\n#     \"filename_contents\":\"shell内容\", #shell文件内容\n# }\n# url:url   hostname：\
+  主机地址  port：端口  scheme：服务  heads:自定义请求头  func_out 输出函数对象\ndef do_exp(url,hostname,port,scheme,heads={},exp_data={},func_out=_out,plugins_temp_data={}):\n\
+  \    # 返回参数\n    # Result返回是否成功，\n    # Result_Info为返回的信息，可以为Paylaod\n    result\
+  \ = {\"Result\": False, \"Result_Info\": \"\"}\n    try:\n\n        #获取全局变量数据\n\
+  \        key = plugins_temp_data.get('key')\n\n        #输出各种信息。参数一类型，默认Debug，可选【\
+  Debug、Error、Info】 参数二位具体内容\n        func_out('Debug',\"debug信息\")\n        func_out('Error',\"\
+  错误信息\",)\n        func_out('Info',\"info信息\")\n\n        #命令执行\n        if exp_data['type']=='cmd':\n\
+  \            ##处理你的命令执行\n            result['Result'] = True\n            result['Result_Info']\
+  \ = \"root\"\n            result['Result_Info'] =plugins_temp_data\n\n        #反\
+  弹shell    \n        elif exp_data['type']=='shell':\n            ##处理你的反弹shell\n\
+  \            result['Result'] = True\n            result['Result_Info'] = \"反弹成功\
+  \"\n        #上传文件    \n        elif exp_data['type']=='uploadfile':\n          \
+  \  ##处理你的上传操作\n            result['Result'] = True\n            result['Result_Info']\
+  \ = \"上传成功\"\n    except Exception as e:\n        func_out('Error',str(e)+str(e.__traceback__.tb_lineno)+'行\
+  ')\n    return result\n"

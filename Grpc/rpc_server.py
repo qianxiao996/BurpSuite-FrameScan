@@ -34,7 +34,7 @@ class PocServicer(scan_pb2_grpc.pocServicer):
                     port = _url.port
                     scheme = _url.scheme
                     result = local_vars['do_poc'](url, hostname, port, scheme, '')
-                    result =  {"url":url,"name":vul_info.get("vuln_name"),"result":result.get("Result"),"others":result.get("Result_Info")}
+                    result =  {"url":url,"name":vul_info.get("vuln_name"),"result":bool(result.get("Result")),"others":str(result.get("Result_Info"))}
                     return result
                 else:
                     print("do_poc not found in local namespace")      
@@ -65,7 +65,7 @@ class PocServicer(scan_pb2_grpc.pocServicer):
             print("【Scan】【%s】【%s】【%s】"%(poc_type,url,poc.get("detail").get("name")))
             result   = self.vuln_scan_yaml_by_souce_code(poc,url)
             print("【Result】【%s】【%s】【%s】【%s】【%s】"%(poc_type,url,poc.get("detail").get("name"),result.get("result"),result.get("others")))
-            return scan_pb2.Poc_Response(is_success=result.get("result"), result=result.get("others"))
+            return scan_pb2.Poc_Response(is_success=bool(result.get("result")), result=str(result.get("others")))
             
         elif poc_type == "Python":
             print("【Scan】【%s】【%s】【%s】"%(poc_type,url,poc))
@@ -74,7 +74,7 @@ class PocServicer(scan_pb2_grpc.pocServicer):
             if result.get("url"):
                 url = result.get("url")
             print("【Result】【%s】【%s】【%s】【%s】【%s】"%(poc_type,url,result.get("name"),result.get("result"),result.get("others")))
-            return scan_pb2.Poc_Response(is_success=result.get("result"), result=result.get("others"))
+            return scan_pb2.Poc_Response(is_success=bool(result.get("result")), result=str(result.get("others")))
         else:
             print("【Error】【%s】【%s】【%s】 %s"%(poc_type,url,poc,"POC插件类型错误！"))
             return scan_pb2.Poc_Response(is_success=False, result="POC插件类型错误！")
@@ -100,7 +100,7 @@ class PocServicer(scan_pb2_grpc.pocServicer):
     #     else:
     #         print("vuln_info not found in local namespace")            
 def serve(host="127.0.0.1:23333"):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=200))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=20000))
     scan_pb2_grpc.add_pocServicer_to_server(PocServicer(), server)
     server.add_insecure_port(host)
     server.start()

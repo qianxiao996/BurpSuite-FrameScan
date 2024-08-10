@@ -5,15 +5,36 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.qianxiao996.tools.burpextend</groupId>
     <artifactId>FrameScan</artifactId>
-    <version>2.3</version>
+    <version>2.4</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <grpc.version>1.45.1</grpc.version>
         <protobuf.version>3.21.9</protobuf.version>
+        <!--配置本地jar包在项目的存放路径-->
+
     </properties>
     <dependencies>
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.5.1</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf-intellij-themes</artifactId>
+            <version>3.5.1</version>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>indi.lijinjiang</groupId>-->
+<!--            <artifactId>beautyeye</artifactId>-->
+<!--            <version>3.7</version>-->
+<!--            mvn install:install-file -Dfile=beautyeye_lnf.jar -DgroupId=indi.lijinjiang -DartifactId=beautyeye -Dversion=3.7 -Dpackaging=jar-->
+<!--            <scope>system</scope>-->
+<!--            <systemPath>${project.basedir}/src/main/resources/lib/beautyeye_lnf.jar</systemPath>-->
+<!--        </dependency>-->
         <!-- https://mvnrepository.com/artifact/net.portswigger.burp.extender/burp-extender-api -->
         <dependency>
             <groupId>net.portswigger.burp.extender</groupId>
@@ -72,15 +93,19 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
+
                 <configuration>
                     <archive>
                         <manifest>
                             <mainClass>burp.MainApplication</mainClass>
                         </manifest>
+
                     </archive>
                     <descriptorRefs>
+
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+
                 </configuration>
                 <executions>
                     <execution>
@@ -98,6 +123,10 @@
                 <configuration>
                     <source>8</source>
                     <target>8</target>
+                    <compilerArgs>
+                        <arg>-extdirs</arg>
+                        <arg>${project.basedir}/src/main/resources/lib/</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
         </plugins>

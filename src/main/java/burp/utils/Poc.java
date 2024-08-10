@@ -1,30 +1,34 @@
 package burp.utils;
 
 import burp.IHttpRequestResponse;
-import burp.Main_Vuln;
+import burp.IResponseInfo;
 import burp.poc.PocEntry;
-import burp.vuln.LogEntry;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.RTextScrollPane;
-import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.*;
 import java.util.List;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import static burp.BurpExtender.*;
+import static burp.BurpExtender.helpers;
 import static burp.Main_Vuln.*;
+import static burp.utils.Conn.*;
 
 public class Poc {
+
     public static void reload_read_poc_Data() throws SQLException {
         model_poc.ClearData();
         model_poc.fireTableDataChanged();
@@ -40,7 +44,7 @@ public class Poc {
             String plugin_type = (String) item.get("plugin_type");
             String plugins_data = (String) item.get("plugins_data");
             String plugins_description = (String) item.get("description");
-            Main_Vuln.model_poc.addValueAt(new PocEntry(id,group,type,name,dir_count,plugin_type,plugins_data,plugins_description));
+            model_poc.addValueAt(new PocEntry(id,group,type,name,dir_count,plugin_type,plugins_data,plugins_description));
         }
         printMsg("POC Data Load Suceess！");
 
@@ -60,7 +64,7 @@ public class Poc {
             }
         }
         List<PocEntry> resultList = new ArrayList<>();
-        String sql = "SELECT * FROM poc WHERE `group` IN ("+sb.toString()+")";
+        String sql = "SELECT * FROM poc WHERE `group` IN ("+ sb +")";
 //        Main_Vuln.printDebug(sql);
         List<Map<String, Object>> sql_result = Sql.Select(sql);
         for (Map<String, Object> item : sql_result) {
@@ -137,8 +141,7 @@ public class Poc {
 
         JLabel label_vuln_type = new JLabel("漏洞分类：");
         String[] items = get_all_poc_type("");
-        JComboBox<String> comboBox_type = null;
-        comboBox_type = new JComboBox<>(items);
+        JComboBox<String> comboBox_type= new JComboBox<>(items);
 
         JLabel label_vuln_name = new JLabel("漏洞名称：");
         JTextField  text_vuln_name= new JTextField(poc_data.name);
@@ -146,17 +149,14 @@ public class Poc {
         comboBox_type.setEditable(true);
         comboBox_type.setSelectedItem(poc_data.type);
 
-        JComboBox<String> finalComboBox_type = comboBox_type;
         comboBox_type.getEditor().getEditorComponent().addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    String keyword = ((JTextField) finalComboBox_type.getEditor().getEditorComponent()).getText();
+                    String keyword = ((JTextField) comboBox_type.getEditor().getEditorComponent()).getText();
                     String[] items = get_all_poc_type(keyword);
-                    if (items != null) {
-                        finalComboBox_type.setModel(new DefaultComboBoxModel<>(items));
-                    }
-                    finalComboBox_type.setSelectedItem(keyword);
+                    comboBox_type.setModel(new DefaultComboBoxModel<>(items));
+                    comboBox_type.setSelectedItem(keyword);
 
                 }
             }
@@ -213,16 +213,13 @@ public class Poc {
         is_enable_label_list.add(label_vuln_status_code);
 
 
-        combox_request.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                //用if判断是否选中，如果不加判断，选中或取消两种状l.;'.;''o
-                // 态同时出现，可能影响正确的取值
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    JComboBox cmb = (JComboBox) e.getSource();
-                    String str = cmb.getSelectedItem().toString();    //得到选中的内容
-                    Update_Poo(is_enable_label_list,text_vuln_value,text_vuln_status_code,comBox_vuln_scope,comBox_vuln_method,textArea_request,str,poc_data);
-                }
+        combox_request.addItemListener(e -> {
+            //用if判断是否选中，如果不加判断，选中或取消两种状l.;'.;''o
+            // 态同时出现，可能影响正确的取值
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                JComboBox<String> cmb = (JComboBox<String>) e.getSource();
+                String str = Objects.requireNonNull(cmb.getSelectedItem()).toString();    //得到选中的内容
+                Update_Poo(is_enable_label_list,text_vuln_value,text_vuln_status_code,comBox_vuln_scope,comBox_vuln_method,textArea_request,str,poc_data);
             }
         });
 
@@ -236,59 +233,40 @@ public class Poc {
         JButton poc_button_cancal = new JButton("取消");
 
 
-        JComboBox<String> finalComboBox_type1 = comboBox_type;
-        JComboBox<String> finalComboBox_type2 = comboBox_type;
-        poc_button_go.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                //分组
-                poc_data.group = (String) comboBox_group.getSelectedItem();
-                //插件类型
-                poc_data.plugin_type = (String) combox_request.getSelectedItem();
-                //分类
-                poc_data.type = (String) finalComboBox_type1.getSelectedItem();
-                //名称
-                poc_data.name = text_vuln_name.getText();
-                if(Objects.equals(poc_data.group, "") || Objects.equals(poc_data.type, "") || Objects.equals(poc_data.name, "")){
-                    JOptionPane.showMessageDialog(null, "必填值为空！", "提示", JOptionPane.INFORMATION_MESSAGE);
-                    return;
-                }
-                String scope = Objects.requireNonNull(comBox_vuln_scope.getSelectedItem()).toString();
-                String match_method = Objects.requireNonNull(comBox_vuln_method.getSelectedItem()).toString();
-                String match_value = text_vuln_value.getText();
-                int status_code = 0;
-                try {
-                    status_code = (Integer.parseInt((text_vuln_status_code.getText())));
-                } catch (Exception ex) {
-//                    JOptionPane.showMessageDialog(null, "状态码请输入数字！", "提示", JOptionPane.INFORMATION_MESSAGE);
-//                    return;
-                }
-                DumperOptions options = new DumperOptions();
-                options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);//通常使用的yaml格式
-                options.setDefaultScalarStyle(DumperOptions.ScalarStyle.PLAIN);//标量格式
+        poc_button_go.addActionListener(e -> {
+            //分组
+            poc_data.group = (String) comboBox_group.getSelectedItem();
+            //插件类型
+            poc_data.plugin_type = (String) combox_request.getSelectedItem();
+            //分类
+            poc_data.type = (String) comboBox_type.getSelectedItem();
+            //名称
+            poc_data.name = text_vuln_name.getText();
+            if(Objects.equals(poc_data.group, "") || Objects.equals(poc_data.type, "") || Objects.equals(poc_data.name, "")){
+                JOptionPane.showMessageDialog(null, "必填值为空！", "提示", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            String scope = Objects.requireNonNull(comBox_vuln_scope.getSelectedItem()).toString();
+            String match_method = Objects.requireNonNull(comBox_vuln_method.getSelectedItem()).toString();
+            String match_value = text_vuln_value.getText();
+            int status_code = 0;
+            try {
+                status_code = (Integer.parseInt((text_vuln_status_code.getText())));
+            } catch (Exception ex) {
+//                JOptionPane.showMessageDialog(null, "状态码请输入数字！", "提示", JOptionPane.INFORMATION_MESSAGE);
+//                return;
+            }
+//                DumperOptions options = new DumperOptions();
+//                options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);//通常使用的yaml格式
+//                options.setDefaultScalarStyle(DumperOptions.ScalarStyle.PLAIN);//标量格式
 
-                Yaml yaml = new Yaml(options);
-                if(combox_request.getSelectedItem()=="简单请求替换") {
-                    try{
-                        Map<String, Object> request_data;
-                        request_data = yaml.load(textArea_request.getText());
-                        Map<String, Object> temp = new HashMap<>();
-                        temp.put("requests", request_data);
-                        Map<String, Object> temp_expression = new HashMap<>();
-                        temp_expression.put("scope", scope);
-                        temp_expression.put("match_method", match_method);
-                        temp_expression.put("match_value", match_value);
-                        temp_expression.put("status_code", status_code);
-                        temp.put("expression", temp_expression);
-                        poc_data.plugins_data = yaml.dump(temp);
-                    } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(null, "Yaml格式错误！", "提示", JOptionPane.INFORMATION_MESSAGE);
-                        return;
-                    }
-                } else if (combox_request.getSelectedItem()=="高级HTTP请求"  ) {
-                    String poc_requests_raw =  textArea_request.getText();
+            Yaml yaml = new Yaml(options);
+            if(combox_request.getSelectedItem()=="简单请求替换") {
+                try{
+                    Map<String, Object> request_data;
+                    request_data = yaml.load(textArea_request.getText());
                     Map<String, Object> temp = new HashMap<>();
-                    temp.put("requests_raw", poc_requests_raw);
+                    temp.put("requests", request_data);
                     Map<String, Object> temp_expression = new HashMap<>();
                     temp_expression.put("scope", scope);
                     temp_expression.put("match_method", match_method);
@@ -296,48 +274,64 @@ public class Poc {
                     temp_expression.put("status_code", status_code);
                     temp.put("expression", temp_expression);
                     poc_data.plugins_data = yaml.dump(temp);
-                } else if (combox_request.getSelectedItem()=="Yaml Poc"  ) {
-                    Map<String, Object> _data;
-                    _data = yaml.load(textArea_request.getText());
-                    Map<String,Object> detail = (Map<String, Object>) _data.get("detail");
-                    detail.put("name", text_vuln_name.getText());
-                    detail.put("category", (String) finalComboBox_type2.getSelectedItem());
-                    detail.put("group", (String) comboBox_group.getSelectedItem());
-                    detail.put("description", text_poc_description.getText());
-                    _data.put("detail", detail);
-                    poc_data.plugins_data = yaml.dump(_data);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, "Yaml格式错误！", "提示", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+            } else if (combox_request.getSelectedItem()=="高级HTTP请求"  ) {
+                String poc_requests_raw =  textArea_request.getText();
+                Map<String, Object> temp = new HashMap<>();
+                temp.put("requests_raw", poc_requests_raw);
+                Map<String, Object> temp_expression = new HashMap<>();
+                temp_expression.put("scope", scope);
+                temp_expression.put("match_method", match_method);
+                temp_expression.put("match_value", match_value);
+                temp_expression.put("status_code", status_code);
+                temp.put("expression", temp_expression);
+                poc_data.plugins_data = yaml.dump(temp);
+            } else if (combox_request.getSelectedItem()=="Yaml Poc"  ) {
+                Map<String, Object> _data;
+                _data = yaml.load(textArea_request.getText());
+                Map<String,Object> detail = (Map<String, Object>) _data.get("detail");
+                detail.put("name", text_vuln_name.getText());
+                detail.put("category", comboBox_type.getSelectedItem());
+                detail.put("group", comboBox_group.getSelectedItem());
+                detail.put("description", text_poc_description.getText());
+                _data.put("detail", detail);
+                poc_data.plugins_data = yaml.dump(_data);
 //                    poc_data.plugins_data = String.valueOf(textArea_request.getText());
-                } else if (combox_request.getSelectedItem()=="Python Poc"  ) {
-                    poc_data.plugins_data = textArea_request.getText();
-                }
-                poc_data.description = text_poc_description.getText();
-                String message = Save_Poc_Data(poc_data);
-                try {
-                    reload_read_poc_Data();
-                    String[] items = Poc.get_all_poc_group();
-                    vuln_poc_combox.setModel(new DefaultComboBoxModel<String>(items));
-                    vuln_disenable_finger_poc_combox.setModel(new DefaultComboBoxModel<String>(items));
-                } catch (SQLException ex) {
-                    printErr(ex.getMessage());
-                    printErr(Arrays.toString(ex.getStackTrace()));
-                }
-                JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
-                if(message.contains("保存成功")){
-                    mainFrame.setVisible(false);
-                    try {
-                        Poc.reload_read_poc_Data();
-                    } catch (SQLException ex) {
-                        printErr(String.valueOf(ex));
-                    }
-                }
+            } else if (combox_request.getSelectedItem()=="Python Poc"  ) {
+                poc_data.plugins_data = textArea_request.getText();
             }
-        });
-        poc_button_cancal.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
+            poc_data.description = text_poc_description.getText();
+            String message = Save_Poc_Data(poc_data);
+            try {
+                reload_read_poc_Data();
+                String[] items1 = Poc.get_all_poc_group();
+                vuln_poc_combox.removeAllItems();
+                vuln_disenable_finger_poc_combox.removeAllItems();
+                for(String i : items1){
+                    vuln_poc_combox.addItem(i);
+                    vuln_disenable_finger_poc_combox.addItem(i);
+                }
+//                    vuln_poc_combox.setModel(new DefaultComboBoxModel<String>(items));
+//                    vuln_disenable_finger_poc_combox.setModel(new DefaultComboBoxModel<String>(items));
+
+            } catch (SQLException ex) {
+                printErr(ex.getMessage());
+                printErr(Arrays.toString(ex.getStackTrace()));
+            }
+            JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
+            if(message.contains("保存成功")){
                 mainFrame.setVisible(false);
+                try {
+                    Poc.reload_read_poc_Data();
+                } catch (SQLException ex) {
+                    printErr(String.valueOf(ex));
+                }
             }
         });
+        poc_button_cancal.addActionListener(e -> mainFrame.setVisible(false));
         JPanel jpanel_poc_ = new JPanel();
         GridBagLayout gbl=new GridBagLayout();//创建网格包布局管理器
         GridBagConstraints gbc=new GridBagConstraints();//GridBagConstraints对象来给出每个组件的大小和摆放位置
@@ -410,9 +404,9 @@ public class Poc {
         return comp;
     }
     public static void Update_Poo(List<JLabel> is_enable_label_list,JTextField text_vuln_value,JTextField text_vuln_status_code,JComboBox comBox_vuln_scope,JComboBox comBox_vuln_method,RSyntaxTextArea textArea_request,String yuyan,PocEntry poc_data){
-        DumperOptions options = new DumperOptions();
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);//通常使用的yaml格式
-        options.setDefaultScalarStyle(DumperOptions.ScalarStyle.PLAIN);//标量格式
+//        DumperOptions options = new DumperOptions();
+//        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);//通常使用的yaml格式
+//        options.setDefaultScalarStyle(DumperOptions.ScalarStyle.PLAIN);//标量格式
         if(yuyan.equals("简单请求替换") || yuyan.equals("高级HTTP请求")){
             for (JLabel item :is_enable_label_list){
                 item.setEnabled(true);
@@ -431,76 +425,286 @@ public class Poc {
             text_vuln_status_code.setEnabled(false);
         }
 
-        if (yuyan.equals("简单请求替换")) {
-            textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_YAML);
-            try{
-                if(!Objects.equals(poc_data.name, "")){
-                    Yaml yaml = new Yaml(options);
-                    Map<String, Object> temp_data = yaml.load(poc_data.plugins_data);
-                    Map temp_requests = (Map) temp_data.get("requests");
-                    String requests_yamlString = yaml.dump(temp_requests);
-                    textArea_request.setText(requests_yamlString );
-                    HashMap temp_expression = (HashMap) temp_data.get("expression");
-                    text_vuln_value.setText((String) temp_expression.get("match_value"));
-                    int status_code = (int) temp_expression.get("status_code");
-                    text_vuln_status_code.setText(String.valueOf(status_code));
-                    comBox_vuln_scope.setSelectedItem((String) temp_expression.get("scope"));
-                    comBox_vuln_method.setSelectedItem((String) temp_expression.get("match_method")); // 方法二：指定列表值
+        switch (yuyan) {
+            case "简单请求替换":
+                textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_YAML);
+                try {
+                    if (!Objects.equals(poc_data.name, "")) {
+                        Yaml yaml = new Yaml(options);
+                        Map<String, Object> temp_data = yaml.load(poc_data.plugins_data);
+                        Map temp_requests = (Map) temp_data.get("requests");
+                        String requests_yamlString = yaml.dump(temp_requests);
+                        textArea_request.setText(requests_yamlString);
+                        HashMap temp_expression = (HashMap) temp_data.get("expression");
+                        text_vuln_value.setText((String) temp_expression.get("match_value"));
+                        int status_code = (int) temp_expression.get("status_code");
+                        text_vuln_status_code.setText(String.valueOf(status_code));
+                        comBox_vuln_scope.setSelectedItem((String) temp_expression.get("scope"));
+                        comBox_vuln_method.setSelectedItem((String) temp_expression.get("match_method")); // 方法二：指定列表值
+                    }
+                } catch (Exception e) {
+                    textArea_request.setText((String) poc_data.plugins_data);
+                    printErr(String.valueOf(e.getMessage()));
+                    printErr(Arrays.toString(e.getStackTrace()));
                 }
-            }catch (Exception e){
-                textArea_request.setText((String) poc_data.plugins_data);
-                printErr(String.valueOf(e.getMessage()));
-                printErr(Arrays.toString(e.getStackTrace()));
-            }
-            if(Objects.equals(poc_data.plugins_data, "")){
-                textArea_request.setText((String) Global_Config.get("Simple_HTTP_Request"));
-            }
-        } else if (yuyan.equals("高级HTTP请求")) {
-            textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
-            try{
-                if(!Objects.equals(poc_data.name, "")) {
-                    Yaml yaml = new Yaml(options);
-                    Map<String, Object> temp_data = yaml.load(poc_data.plugins_data);
-                    textArea_request.setText((String) temp_data.get("requests_raw"));
-                    HashMap temp_expression = (HashMap) temp_data.get("expression");
-                    text_vuln_value.setText((String) temp_expression.get("match_value"));
-                    int status_code = (int) temp_expression.get("status_code");
-                    text_vuln_status_code.setText(String.valueOf(status_code));
-                    comBox_vuln_scope.setSelectedItem((String) temp_expression.get("scope"));
-                    comBox_vuln_method.setSelectedItem((String) temp_expression.get("match_method")); // 方法二：指定列表值
+                if (Objects.equals(poc_data.plugins_data, "")) {
+                    textArea_request.setText((String) Global_Config.get("Simple_HTTP_Request"));
                 }
-            }catch (Exception e){
-                textArea_request.setText((String) poc_data.plugins_data);
-                printErr(String.valueOf(e));
-            }
-            if(Objects.equals(poc_data.plugins_data, "")){
-                textArea_request.setText((String) Global_Config.get("Advanced_HTTP_Request"));
-            }
-        } else if  (yuyan.equals("Yaml Poc")){
-            textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_YAML);
-            textArea_request.setText(poc_data.plugins_data);
-            if(Objects.equals(poc_data.plugins_data, "")){
-                textArea_request.setText((String) Global_Config.get("Yaml_Poc"));
-            }
-        } else if  (yuyan.equals("Python Poc")){
-            textArea_request.setText(poc_data.plugins_data);
-            textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PYTHON);
-            if(Objects.equals(poc_data.plugins_data, "")){
-                textArea_request.setText((String) Global_Config.get("Python_Poc"));
-            }
-        }else{
-            textArea_request.setText(poc_data.plugins_data);
+                break;
+            case "高级HTTP请求":
+                textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
+                try {
+                    if (!Objects.equals(poc_data.name, "")) {
+                        Yaml yaml = new Yaml(options);
+                        Map<String, Object> temp_data = yaml.load(poc_data.plugins_data);
+                        textArea_request.setText((String) temp_data.get("requests_raw"));
+                        HashMap temp_expression = (HashMap) temp_data.get("expression");
+                        text_vuln_value.setText((String) temp_expression.get("match_value"));
+                        int status_code = (int) temp_expression.get("status_code");
+                        text_vuln_status_code.setText(String.valueOf(status_code));
+                        comBox_vuln_scope.setSelectedItem(temp_expression.get("scope"));
+                        comBox_vuln_method.setSelectedItem(temp_expression.get("match_method")); // 方法二：指定列表值
+                    }
+                } catch (Exception e) {
+                    textArea_request.setText(poc_data.plugins_data);
+                    printErr(String.valueOf(e));
+                }
+                if (Objects.equals(poc_data.plugins_data, "")) {
+                    textArea_request.setText((String) Global_Config.get("Advanced_HTTP_Request"));
+                }
+                break;
+            case "Yaml Poc":
+                textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_YAML);
+                textArea_request.setText(poc_data.plugins_data);
+                if (Objects.equals(poc_data.plugins_data, "")) {
+                    textArea_request.setText((String) Global_Config.get("Yaml_Poc"));
+                }
+                break;
+            case "Python Poc":
+                textArea_request.setText(poc_data.plugins_data);
+                textArea_request.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PYTHON);
+                if (Objects.equals(poc_data.plugins_data, "")) {
+                    textArea_request.setText((String) Global_Config.get("Python_Poc"));
+                }
+                break;
+            default:
+                textArea_request.setText(poc_data.plugins_data);
+                break;
         }
     }
 
     public static List<PocEntry> get_mathch_poc(String findr_str) {
-        List<String> finger_list = Arrays.asList(findr_str.split("$$$"));
+        List<String> finger_list = Arrays.asList(findr_str.split("\\$\\$\\$"));
         List<PocEntry> all_enale_poc = new ArrayList<>();
         for (PocEntry poc : enable_poc_list) {
-            if (finger_list.contains(poc.type)) {
+            if (finger_list.contains(poc.type) || Objects.equals(poc.type, "ALL")) {
                 all_enale_poc.add(poc);
             }
         }
         return mergeAndRemoveDuplicates(jump_finger_poc_list,all_enale_poc);
     }
+
+    public static  String Replace_Var_Request(IHttpRequestResponse messageInfo,String requests_raw) throws MalformedURLException {
+        URL wanzheng_url;
+        if(is_burp){
+            wanzheng_url = helpers.analyzeRequest(messageInfo).getUrl();
+        }else{
+            String url  = get_requests_url(messageInfo,true);
+            wanzheng_url = new URL(url);
+        }
+        // 获取整个路径
+        String base_url_path = wanzheng_url.getPath();
+        // 如果你想去掉可能存在的查询参数
+        if (base_url_path.contains("?")) {
+            base_url_path = base_url_path.substring(0, base_url_path.indexOf('?'));
+        }
+        base_url_path = base_url_path.startsWith("/") ? base_url_path : "/" + base_url_path;
+        // 获取主机名
+//        String host = wanzheng_url.getHost()+":";
+        String base_path;
+        if (base_url_path.endsWith("/")) {
+            base_path = base_url_path;
+        }else{
+            // 查找最后一个斜杠的位置
+            int lastSlashIndex = base_url_path.lastIndexOf('/');
+            // 如果找到了斜杠，保留从开始到斜杠的位置
+            if (lastSlashIndex != -1) {
+                base_path =  base_url_path.substring(0, lastSlashIndex + 1);
+            } else {
+                // 如果路径中没有斜杠，返回空字符串或其他错误提示
+                base_path =  "/";
+            }
+        }
+        requests_raw = requests_raw.replaceAll("\\{\\{Host\\}\\}",wanzheng_url.getAuthority());
+        requests_raw = requests_raw.replaceAll("\\{\\{Base_Url\\}\\}",base_url_path);
+        requests_raw = requests_raw.replaceAll("\\{\\{Base_Path\\}\\}",base_path);
+        requests_raw = requests_raw.replaceAll("\\{\\{Url\\}\\}",wanzheng_url.toString());
+        requests_raw = requests_raw.replaceAll("\\{\\{Random_UserAgent\\}\\}",Get_Random_UserAgent());
+        //getbody
+        byte[] requestBytes = messageInfo.getRequest();
+        String body;
+        Map<String, Object> head_body = null;
+        if(is_burp){
+            // 分析请求以获取请求体的偏移量
+            int bodyOffset = helpers.analyzeRequest(messageInfo).getBodyOffset();
+            // 获取请求体
+            byte[] bodyBytes = new byte[requestBytes.length - bodyOffset];
+            System.arraycopy(requestBytes, bodyOffset, bodyBytes, 0, requestBytes.length - bodyOffset);
+            body =  new String(bodyBytes, StandardCharsets.UTF_8);
+        }else{
+            head_body =  get_requests_response_head_body(messageInfo.getRequest());
+            body = (String) head_body.get("body");
+        }
+        requests_raw = requests_raw.replaceAll("\\{\\{Body\\}\\}",body);
+        //修改请求头
+        List<String> source_headers;
+        if(is_burp){
+            source_headers = helpers.analyzeRequest(messageInfo).getHeaders();
+        }else{
+            source_headers = (List<String>) head_body.get("header");
+        }
+        if(source_headers!=null && !source_headers.isEmpty()){
+            for (String item : source_headers) {
+                String[] item_list = item.split(" ");
+                if(item_list.length>1){
+                    String key = item_list[0];
+                    requests_raw = requests_raw.replaceAll("\\{\\{"+key+"\\}\\}",item_list[1]);
+                }
+            }
+        }
+        return requests_raw;
+    }
+
+
+
+
+    public static List<String> Set_Header_Requests(IHttpRequestResponse requestResponse, String method,String url,Map<String,String> headers){
+        String source_method;
+        List<String> source_headers;
+        if(is_burp){
+            source_method = helpers.analyzeRequest(requestResponse).getMethod(); // 获取提交方法
+            source_headers = helpers.analyzeRequest(requestResponse).getHeaders();
+
+        }else{
+            String[] head_list = get_requests_head_line(requestResponse);
+            source_method = head_list[0]; // 获取提交方法
+            source_headers = (List<String>) get_requests_response_head_body(requestResponse.getRequest()).get("header");
+        }
+        if( method ==null || method.isEmpty()){
+            method=source_method;
+        }
+        String headUrl = source_headers.get(0);
+        List<String> keyValueStrings;
+        if(headers !=null && !headers.isEmpty()){
+            source_headers.subList(1, source_headers.size());
+            //将heads转换为key、value的形式
+            Map<String,String> Source_heads_map  = new HashMap<>();
+            for (String item : source_headers) {
+                String[] item_list = item.split(" ");
+                String key = item_list[0];
+                String value="";
+                if(item_list.length>1){
+                    value = item_list[1];
+                }
+                Source_heads_map.put(key,value);
+            }
+            Source_heads_map.putAll(headers);
+            Source_heads_map.put("Cookie",Source_heads_map.get("Cookie").replaceAll("\\{\\{Random_UserAgent\\}\\}",Get_Random_UserAgent()));
+            // 遍历 Map 的键值对
+            keyValueStrings = new ArrayList<>();
+            for (Map.Entry<String, String> entry : Source_heads_map.entrySet()) {
+                // 将键和值转换为字符串，并用空格分隔
+                String keyValueString = entry.getKey() + " " + entry.getValue();
+                keyValueStrings.add(keyValueString);
+            }
+        }else{
+            keyValueStrings = source_headers;
+        }
+        String[] e = headUrl.split(" ");
+        url = url.replaceAll("//+","/");
+        String result_headUrl = method.toUpperCase()+" "+url+" "+e[2];
+        keyValueStrings.set(0,result_headUrl);
+        return  keyValueStrings;
+    }
+
+    public static Boolean Match_poc_data(IHttpRequestResponse requestResponse, Map<String,Object> poc){
+        if((int)poc.get("status_code") !=0  && (GetMessageStatusCode(requestResponse)!=(int)poc.get("status_code"))){
+            return  false;
+        }
+        boolean scan_result = false;
+        String match_source_data = "";
+        if(Objects.equals(poc.get("scope"), "response")){
+            match_source_data = new String(requestResponse.getResponse());
+        }else if (Objects.equals(poc.get("scope"), "response header")){
+            String response_headers="";
+            if (is_burp){
+                response_headers = helpers.analyzeResponse(requestResponse.getResponse()).getHeaders().toString();
+            }else{
+                Map<String, Object> head_body = get_requests_response_head_body(requestResponse.getResponse());
+                response_headers = (String) head_body.get("body");
+            }
+            match_source_data = response_headers;
+        }else if (Objects.equals(poc.get("scope"), "response body")){
+            if(is_burp){
+                String response_data = new String(requestResponse.getResponse());
+                IResponseInfo analyzeResponse = helpers.analyzeResponse(requestResponse.getResponse());
+                int bodyOffset = analyzeResponse.getBodyOffset();
+                match_source_data = response_data.substring(bodyOffset);
+            }else{
+                Map<String, Object> body_map = get_requests_response_head_body(requestResponse.getResponse());
+                match_source_data= (String) body_map.get("body");
+            }
+
+        }else if (Objects.equals(poc.get("scope"), "response title")){
+            String response_data = new String(requestResponse.getResponse());
+            Pattern titlePattern = Pattern.compile("<title>(.*?)</title>", Pattern.DOTALL|Pattern.CASE_INSENSITIVE);
+            Matcher matcher = titlePattern.matcher(response_data);
+            if (matcher.find()) {
+                match_source_data =  matcher.group(1).trim(); // 返回title标签内容
+            }
+        }
+        else{
+            match_source_data="";
+        }
+        //开始进行匹配   ”Contain","Equal", "Regex"}
+        if(!Objects.equals(poc.get("match_method"), "") && !Objects.equals(poc.get("match_value"), "") && !Objects.equals(match_source_data, "")){
+            if(Objects.equals(poc.get("match_method"), "Contain") && match_source_data.contains((String) poc.get("match_value"))) {
+                scan_result = true;
+            }else if(Objects.equals(poc.get("match_method"), "Equal") && match_source_data.equals(poc.get("match_value"))) {
+                scan_result = true;
+            }else if(Objects.equals(poc.get("match_method"), "Regex")) {
+                try{
+                    if (!match_source_data.isEmpty()){
+                        Pattern pattern = Pattern.compile((String) poc.get("match_value"));
+                        Matcher matcher = pattern.matcher(match_source_data);
+                        // 查找匹配项
+                        if (matcher.find()) {
+                            scan_result = true;
+                        }
+                    }
+                }catch (Exception ex){
+                    printErr(Arrays.toString(ex.getStackTrace()));
+                }
+            }
+
+        }
+        return scan_result;
+    }
+
+    /**
+     * 统计某个字符串在指定字符串中出现的个数
+     */
+    public static List<String> countString(String str, String s) {
+//        int count = 0,len = str.length();
+        List<String> list = new ArrayList<>();
+        String ss = str;
+        while(str.contains(s)) {
+            str = str.substring(str.indexOf(s) + 1);
+            list.add(ss.replace(str, s).replaceAll("//+","/"));
+            count++;
+        }
+//        Collections.reverse(list);
+        return list;
+    }
+
 }

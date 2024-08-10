@@ -1,13 +1,21 @@
 package burp.utils;
+import burp.IHttpRequestResponse;
+import burp.IResponseInfo;
 import burp.Main_Vuln;
 import burp.finger.FingerEntry;
+import com.google.common.hash.Hashing;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -16,8 +24,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static burp.BurpExtender.helpers;
 import static burp.Main_Vuln.*;
+import static burp.utils.Conn.get_requests_response_head_body;
+import static burp.utils.Conn.get_requests_url;
+import static burp.utils.CustHttpService.send_http_get;
 import static burp.utils.Poc.Add_Component;
+import static burp.utils.Poc.countString;
+
 public class Finger {
 
     public static String delete_finger_data(FingerEntry temp) {
@@ -136,40 +153,41 @@ public class Finger {
         JButton finger_button_go = new JButton("确定");
         JButton finger_button_cancal = new JButton("取消");
 
-        finger_button_go.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                finger_data.cms = (String) comboBox_cms.getSelectedItem();
-                finger_data.method = (String) comBox_vuln_method.getSelectedItem();
-                finger_data.location = (String) comBox_vuln_location.getSelectedItem();
-                finger_data.keyword = text_vuln_value.getText();
-                finger_data.isImportant = (int) comBox_vuln_important.getSelectedItem();
-                finger_data.type = (String) comboBox_type.getSelectedItem();
-                printErr(finger_data.toString());
-                String message = Save_Finger_Data(finger_data);
-                try {
-                    reload_read_finger_Data();
-                } catch (SQLException ex) {
-                    printErr(ex.getMessage());
-                    printErr(Arrays.toString(ex.getStackTrace()));
+        finger_button_go.addActionListener(e -> {
+            finger_data.cms = (String) comboBox_cms.getSelectedItem();
+            finger_data.method = (String) comBox_vuln_method.getSelectedItem();
+            finger_data.location = (String) comBox_vuln_location.getSelectedItem();
+            finger_data.keyword = text_vuln_value.getText();
+            try{
+                if( comBox_vuln_important.getSelectedItem()!=null){
+                    finger_data.isImportant = (int) comBox_vuln_important.getSelectedItem();
+                }else{
+                    finger_data.isImportant=1;
                 }
-                JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
-                mainFrame_Finger.setVisible(false);
-                try {
-                    Finger.reload_read_finger_Data();
-                } catch (SQLException ex) {
-                    printErr(String.valueOf(ex));
-                }
+            }catch (Exception  a){
+                finger_data.isImportant=1;
+            }
+
+            finger_data.type = (String) comboBox_type.getSelectedItem();
+            printErr(finger_data.toString());
+            String message = Save_Finger_Data(finger_data);
+            try {
+                reload_read_finger_Data();
+            } catch (SQLException ex) {
+                printErr(ex.getMessage());
+                printErr(Arrays.toString(ex.getStackTrace()));
+            }
+            JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
+            mainFrame_Finger.setVisible(false);
+            try {
+                Finger.reload_read_finger_Data();
+            } catch (SQLException ex) {
+                printErr(String.valueOf(ex));
             }
         });
 
 
-        finger_button_cancal.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                mainFrame_Finger.setVisible(false);
-            }
-        });
+        finger_button_cancal.addActionListener(e -> mainFrame_Finger.setVisible(false));
 
         JPanel jpanel_finger_ = new JPanel();
         GridBagLayout gbl=new GridBagLayout();//创建网格包布局管理器
@@ -239,5 +257,159 @@ public class Finger {
         }
         return resultArray;
     }
+    public static String get_host_ico(String host_url, IHttpRequestResponse requestResponse) throws IOException {
+        String temp_url;
+        if(is_burp){
+             temp_url = String.valueOf(helpers.analyzeRequest(requestResponse).getUrl());
+        }else{
+            temp_url = get_requests_url(requestResponse,true);
+        }
+        URL url  = new URL(temp_url);
+        String path = url.getPath(); //获取的路径
+        List<String> list = countString(path,"/"); // 获取路径中所有路径的组合
+        //得到返回body
+        String response_body;
+        if(is_burp){
+            String response_data = new String(requestResponse.getResponse());
+            IResponseInfo analyzeResponse = helpers.analyzeResponse(requestResponse.getResponse());
+            int bodyOffset = analyzeResponse.getBodyOffset();
+             response_body = response_data.substring(bodyOffset);
+        }else{
+            Map head_body   = get_requests_response_head_body(requestResponse.getResponse());
+            response_body = (String) head_body.get("body");
+        }
+        String iconpath;
+        if (!response_body.isEmpty()){
+            // 定义正则表达式
+            Pattern pattern = Pattern.compile("<link[^>]*rel=\"(?:shortcut )?icon\"[^>]*href=\"([^\"]*)\"");
+            Matcher matcher = pattern.matcher(response_body);
+            // 查找匹配项
+            if (matcher.find()) {
+                iconpath =  matcher.group(1); // 返回找到的第一个图标路径
+                list.add(0,iconpath);
+            }
+        }
 
+        for(String urlpath :list){
+            if(urlpath.endsWith("/")){
+                urlpath = urlpath+"favicon.ico";
+            }else{
+                urlpath = urlpath+"/favicon.ico";
+            }
+            String requests_url= (host_url+urlpath);
+//            requests_url =requests_url.replaceAll("://+","$!#!#!$").replaceAll("//+","/").replaceAll("\\$!#!#!\\$","://");
+//            String requests_url= url.getProtocol()+"://"+url_dir;
+            String http_response =  send_http_get(requests_url);
+            try{
+                if (!http_response.isEmpty()){
+                    int murmu = Hashing
+                            .murmur3_32_fixed().hashString(http_response.replaceAll("\r","" )+"\n", StandardCharsets.UTF_8)
+                            .asInt();
+                    return  String.valueOf(murmu);
+                }
+            }catch (Exception ex){
+                printErr(Arrays.toString(ex.getStackTrace()));
+            }
+        }
+        return "";
+    }
+    public static String Match_keyword_finger(IHttpRequestResponse requestResponse, FingerEntry finger) {
+        String match_source_data = "";
+        String ret_url;
+        if(is_burp){
+            ret_url = String.valueOf(helpers.analyzeRequest(requestResponse).getUrl());
+        }else{
+            ret_url = get_requests_url(requestResponse,true);
+        }
+
+        if(Objects.equals(finger.location, "body")){
+            if(is_burp){
+                String response_data = new String(requestResponse.getResponse());
+                IResponseInfo analyzeResponse = helpers.analyzeResponse(requestResponse.getResponse());
+                int bodyOffset = analyzeResponse.getBodyOffset();
+                match_source_data = response_data.substring(bodyOffset);
+            }else{
+                Map head_body   = get_requests_response_head_body(requestResponse.getResponse());
+                match_source_data = (String) head_body.get("body");
+            }
+        }else if (Objects.equals(finger.location, "header")){
+            if(is_burp) {
+                match_source_data = helpers.analyzeResponse(requestResponse.getResponse()).getHeaders().toString();
+            }else{
+                Map head_body   = get_requests_response_head_body(requestResponse.getResponse());
+                match_source_data =String.join("\n",(List)head_body.get("header"));
+            }
+        }else if (Objects.equals(finger.location, "title")){
+            String response_data = new String(requestResponse.getResponse());
+            Pattern titlePattern = Pattern.compile("<title>(.*?)</title>", Pattern.DOTALL|Pattern.CASE_INSENSITIVE);
+            Matcher matcher = titlePattern.matcher(response_data);
+            if (matcher.find()) {
+                match_source_data =  matcher.group(1).trim(); // 返回title标签内容
+            }
+        }
+        else{
+            match_source_data="";
+        }
+        List<String> keyword_list=null;
+        try{
+            Gson gson = new Gson();
+            Type listType = new TypeToken<List<String>>(){}.getType();
+            keyword_list = gson.fromJson(finger.keyword, listType);
+        }catch (Exception ex){
+            printErr(finger.cms+" "+finger.keyword+"Conversion to JSON error:"+ex.getMessage());
+        }
+        if(keyword_list !=null){
+            String   is_success = finger.cms;
+            for (String element : keyword_list) {
+                if (!match_source_data.contains(element)) {
+                    is_success = "";
+                    break;
+                }
+            }
+            if(!is_success.isEmpty()){
+                printDebug("【Match】"+ret_url+"【Finger】"+finger.cms+"【Keyword】"+keyword_list+"【Success】");
+            }else{
+                printDebug("【Match】"+ret_url+"【Finger】"+finger.cms+"【Keyword】"+finger.keyword+"【Fail】");
+            }
+            return is_success;
+
+        } else if ( match_source_data.contains(finger.keyword)) {
+            printDebug("【Match】"+ret_url+"【Finger】"+finger.cms+"【Keyword】"+finger.keyword+"【Success】");
+            return  finger.cms;
+        }
+//        printDebug("【Match】"+helpers.analyzeRequest(requestResponse).getUrl()+"【Finger】"+finger.cms+"【Keyword】"+finger.keyword+"【Fail】");
+        return  "";
+    }
+    public static String Match_faviconhash_finger(IHttpRequestResponse requestResponse, FingerEntry finger, String host) {
+        String ret_url;
+        if(is_burp){
+            ret_url = String.valueOf(helpers.analyzeRequest(requestResponse).getUrl());
+        }else{
+            ret_url = get_requests_url(requestResponse,true);
+        }
+        if(finger_ico_hash_map.get(host)!=null && !Objects.equals(finger_ico_hash_map.get(host), "")) {
+            List<String> keyword_list=null;
+            String icon_hash = finger_ico_hash_map.get(host);
+            try{
+                Gson gson = new Gson();
+                Type listType = new TypeToken<List<String>>(){}.getType();
+                keyword_list = gson.fromJson(finger.keyword, listType);
+            }catch (Exception ex){
+                printErr(finger.cms+" "+finger.keyword+"Conversion to JSON error:"+ex.getMessage());
+            }
+            if(keyword_list !=null){
+                for(String poc :keyword_list){
+                    if(Objects.equals(icon_hash, poc)){
+                        printDebug("【Match】"+ret_url+"【Finger】"+finger.cms+"【Keyword】"+finger.keyword+" Success");
+                        return  finger.cms;
+                    }
+                }
+            } else if (Objects.equals(icon_hash, finger.keyword)) {
+                printDebug("【Match】"+ret_url+"【Finger】"+finger.cms+"【Keyword】"+finger.keyword+" Success");
+                return  finger.cms;
+            }
+        }
+        printDebug("【Match】"+ret_url+"【Finger】"+finger.cms+"【Keyword】"+finger.keyword+"【Fail】");
+        return  "";
+    }
 }
