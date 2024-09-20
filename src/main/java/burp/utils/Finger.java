@@ -2,7 +2,7 @@ package burp.utils;
 import burp.IHttpRequestResponse;
 import burp.IResponseInfo;
 import burp.Main_Vuln;
-import burp.finger.FingerEntry;
+import burp.model.finger.FingerEntry;
 import com.google.common.hash.Hashing;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -16,6 +16,8 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -31,7 +33,7 @@ import static burp.BurpExtender.helpers;
 import static burp.Main_Vuln.*;
 import static burp.utils.Conn.get_requests_response_head_body;
 import static burp.utils.Conn.get_requests_url;
-import static burp.utils.CustHttpService.send_http_get;
+import static burp.utils.CustHttpService.get_host_ico_http_requests;
 import static burp.utils.Poc.Add_Component;
 import static burp.utils.Poc.countString;
 
@@ -60,7 +62,9 @@ public class Finger {
         }
         printMsg("Finger Data Load Suceess！");
     }
-    private static String Save_Finger_Data(FingerEntry fingerdata) {
+
+    public static String Save_Finger_Data(FingerEntry fingerdata) throws SQLException {
+        Group.Add_Group(fingerdata.cms,"指纹POC");
         String url = "jdbc:sqlite:/"+ Main_Vuln.SQL_DB_PATH;
         try (Connection connection = DriverManager.getConnection(url);
              PreparedStatement pstmt = connection.prepareStatement(
@@ -87,14 +91,57 @@ public class Finger {
             return Arrays.toString(e.getStackTrace());
         }
     }
+    public static void Save_Finger_Data_All(List<FingerEntry> groupEntries) {
+        String url = "jdbc:sqlite:" + Main_Vuln.SQL_DB_PATH;
+        try (Connection connection = DriverManager.getConnection(url)) {
+            // 开启事务
+            connection.setAutoCommit(false);
+            String sql = "INSERT OR REPLACE INTO finger (`id`,`cms`,`method`,`location`,`keyword`,`isImportant`,`type`) VALUES (?,?,?,?, ?, ?,?)";
+            try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                for (FingerEntry fingerdata : groupEntries) {
+                    pstmt.setInt(1, fingerdata.id);
+                    pstmt.setString(2, fingerdata.cms);
+                    pstmt.setString(3, fingerdata.method);
+                    pstmt.setString(4, fingerdata.location);
+                    pstmt.setString(5, fingerdata.keyword);
+                    pstmt.setInt(6, fingerdata.isImportant);
+                    pstmt.setString(7, fingerdata.type);
+                    pstmt.addBatch(); // 添加到批处理中
+                }
+                // 执行批处理
+                int[] rowsAffected = pstmt.executeBatch();
+                // 提交事务
+                connection.commit();
+                // 检查是否有数据被影响
+                boolean anySuccess = false;
+                for (int rows : rowsAffected) {
+                    if (rows > 0) {
+                        anySuccess = true;
+                        break;
+                    }
+                }
+                if (anySuccess) {
+                } else {
+                }
+            } catch (SQLException e) {
+                // 回滚事务
+                connection.rollback();
+                printErr(e.getMessage());
+                printErr(Arrays.toString(e.getStackTrace()));
+            }
+        } catch (SQLException e) {
+            printErr(e.getMessage());
+            printErr(Arrays.toString(e.getStackTrace()));
+        }
+    }
     public static void finger_edit(FingerEntry finger_data) {
         mainFrame_Finger = new JFrame("编辑指纹");
         mainFrame_Finger.setLayout(new BorderLayout());
         JLabel label_vuln_type = new JLabel("漏洞分类：");
-        label_vuln_type.setPreferredSize(new Dimension(70, 20));
+//        label_vuln_type.setPreferredSize(new Dimension(70, 20));
         String[] items = get_all_finger_cms("");
         JComboBox<String> comboBox_cms = new JComboBox<>(items);
-        comboBox_cms.setPreferredSize(new Dimension(200,20));
+//        comboBox_cms.setPreferredSize(new Dimension(200,20));
         // 设置ComboBox为可编辑
         comboBox_cms.setEditable(true);
         comboBox_cms.setSelectedItem(finger_data.cms);
@@ -113,7 +160,7 @@ public class Finger {
             }
         });
         JLabel label_vuln_method = new JLabel("匹配方法：");
-        label_vuln_method.setPreferredSize(new Dimension(70, 20));
+//        label_vuln_method.setPreferredSize(new Dimension(70, 20));
 //
         String[] method_List = { "keyword","faviconhash"};
         JComboBox<String> comBox_vuln_method = new JComboBox<>(method_List);
@@ -122,7 +169,7 @@ public class Finger {
 //
 
         JLabel label_vuln_scope = new JLabel("匹配位置：");
-        label_vuln_scope.setPreferredSize(new Dimension(70, 20));
+//        label_vuln_scope.setPreferredSize(new Dimension(70, 20));
         String[] strList = { "body", "header", "title"};
         JComboBox<String> comBox_vuln_location = new JComboBox<>(strList);
 //        comBox.setSelectedIndex(2); // 方法一：列表下标，从0开始
@@ -131,12 +178,12 @@ public class Finger {
 
 
         JLabel label_vuln_reg = new JLabel("匹配值：");
-        label_vuln_reg.setPreferredSize(new Dimension(70, 20));
+//        label_vuln_reg.setPreferredSize(new Dimension(70, 20));
         JTextField text_vuln_value = new JTextField(finger_data.keyword);
 
 
         JLabel label_vuln_important = new JLabel("重要程度：");
-        label_vuln_important.setPreferredSize(new Dimension(70, 20));
+//        label_vuln_important.setPreferredSize(new Dimension(70, 20));
         Integer[] dir_List = { 0,1,2,3,4,5};
         JComboBox<Integer> comBox_vuln_important = new JComboBox<>(dir_List);
 
@@ -145,7 +192,7 @@ public class Finger {
         JLabel label_vuln_group = new JLabel("CMS分类：");
         String[] items_group = get_all_finger_type();
         JComboBox<String> comboBox_type = new JComboBox<>(items_group);
-        comboBox_type.setPreferredSize(new Dimension(200,20));
+//        comboBox_type.setPreferredSize(new Dimension(200,20));
         // 设置ComboBox为可编辑
         comboBox_type.setEditable(true);
         comboBox_type.setSelectedItem(finger_data.type);
@@ -169,8 +216,13 @@ public class Finger {
             }
 
             finger_data.type = (String) comboBox_type.getSelectedItem();
-            printErr(finger_data.toString());
-            String message = Save_Finger_Data(finger_data);
+            String message = null;
+            try {
+                message = Save_Finger_Data(finger_data);
+            } catch (SQLException ex) {
+                printErr(ex.getMessage());
+                printErr(Arrays.toString(ex.getStackTrace()));
+            }
             try {
                 reload_read_finger_Data();
             } catch (SQLException ex) {
@@ -181,6 +233,7 @@ public class Finger {
             mainFrame_Finger.setVisible(false);
             try {
                 Finger.reload_read_finger_Data();
+                Group.reload_read_group_Data();
             } catch (SQLException ex) {
                 printErr(String.valueOf(ex));
             }
@@ -210,11 +263,11 @@ public class Finger {
         jpanel_finger_.add(Add_Component(gbl,label_vuln_important,gbc,0,2,1,1,0,0));
         jpanel_finger_.add(Add_Component(gbl,comBox_vuln_important,gbc,1,2,1,2,1,0));
 
-        jpanel_finger_.add(Add_Component(gbl,label_vuln_scope,gbc,0,3,1,1,0,0));
-        jpanel_finger_.add(Add_Component(gbl,comBox_vuln_location,gbc,1,3,1,2,1,0));
+        jpanel_finger_.add(Add_Component(gbl,label_vuln_method,gbc,0,3,1,1,0,0));
+        jpanel_finger_.add(Add_Component(gbl,comBox_vuln_method,gbc,1,3,1,2,1,0));
 
-        jpanel_finger_.add(Add_Component(gbl,label_vuln_method,gbc,0,4,1,1,0,0));
-        jpanel_finger_.add(Add_Component(gbl,comBox_vuln_method,gbc,1,4,1,2,1,0));
+        jpanel_finger_.add(Add_Component(gbl,label_vuln_scope,gbc,0,4,1,1,0,0));
+        jpanel_finger_.add(Add_Component(gbl,comBox_vuln_location,gbc,1,4,1,2,1,0));
 
         jpanel_finger_.add(Add_Component(gbl,label_vuln_reg,gbc,0,5,1,1,0,0));
         jpanel_finger_.add(Add_Component(gbl,text_vuln_value,gbc,1,5,1,2,1,0));
@@ -228,7 +281,7 @@ public class Finger {
 
         jpanel_finger_.setBorder(new EmptyBorder(10, 10, 10, 10)); // 设置外边距为10
         mainFrame_Finger.getContentPane().add(jpanel_finger_);
-        mainFrame_Finger.setSize(500, 320);
+        mainFrame_Finger.setSize(500, 400);
         mainFrame_Finger.setLocationRelativeTo(null);
         mainFrame_Finger.setVisible(true);
     }
@@ -257,7 +310,7 @@ public class Finger {
         }
         return resultArray;
     }
-    public static String get_host_ico(String host_url, IHttpRequestResponse requestResponse) throws IOException {
+    public static String get_host_ico(String host_url, IHttpRequestResponse requestResponse) throws IOException, NoSuchAlgorithmException, KeyManagementException {
         String temp_url;
         if(is_burp){
              temp_url = String.valueOf(helpers.analyzeRequest(requestResponse).getUrl());
@@ -299,7 +352,7 @@ public class Finger {
             String requests_url= (host_url+urlpath);
 //            requests_url =requests_url.replaceAll("://+","$!#!#!$").replaceAll("//+","/").replaceAll("\\$!#!#!\\$","://");
 //            String requests_url= url.getProtocol()+"://"+url_dir;
-            String http_response =  send_http_get(requests_url);
+            String http_response =  get_host_ico_http_requests(requests_url);
             try{
                 if (!http_response.isEmpty()){
                     int murmu = Hashing

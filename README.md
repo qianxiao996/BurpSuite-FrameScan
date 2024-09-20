@@ -11,7 +11,7 @@ FrameScan插件是一款插件化的指纹POC扫描插件。
 
 burp发现的指纹及poc扫描结果会显示在此处。
 
-![image-20240804145917484](attachment/image-20240804145917484.png)
+![2024-09-20_09-57-12](attachment/2024-09-20_09-57-12.jpg)
 
 ## 漏洞poc
 
@@ -175,11 +175,101 @@ def do_poc(url,hostname,port,scheme,heads={}):
 
 ![image-20240804151359956](attachment/image-20240804151359956.png)
 
-## 插件设置
+## 分组管理
 
-![image-20240804150102003](attachment/image-20240804150102003.png)
-
-启用漏洞POC：指纹匹配后，只有在此组的漏洞POC才会进行扫。，
+启用漏洞POC：指纹匹配后，只有在此组的漏洞POC才会进行扫描。
 
 跳过指纹POC：不进行指纹扫描。直接进行扫描的POC。
+
+![image-20240920095944182](attachment/image-20240920095944182.png)
+
+
+
+## 插件设置
+
+![image-20240920095906076](attachment/image-20240920095906076.png)
+
+
+
+## 配置文件介绍
+
+```yaml
+#是否启用代理
+Is_Proxy: true
+#是否启用Debug
+Is_Debug: true
+#是否开启白名单
+WhiteEnable: false
+#是否启用POC插件
+Enable_Poc: true
+#是否开启Repeater
+Is_Repeater: true
+#白名单域名列表 
+WhiteList: baidu.com
+#黑名单域名列表
+BlackList: www.baidu.com
+#是否启用指纹插件
+Enable_Finger: true
+#指纹扫描后，匹配的POC插件列表
+EnablePocList: 高危漏洞,渗透测试,接口泄露,默认分组,信息泄露
+#不进行指纹扫描，直接扫描的漏洞POC插件
+DisenableFingerPocList: Yaml Poc测试,高级HTTP请求测试,Python  Poc测试
+#GRPC ip地址
+Grpc_Host: localhost
+#GRPC 端口
+Grpc_Port: 23333
+#GUI主题，配置项：FlatDarkLaf、FlatIntelliJLaf、FlatLightLaf、FlatCyanLightIJTheme、FlatArcIJTheme、FlatArcOrangeIJTheme、FlatLightFlatIJTheme、FlatSolarizedLightIJTheme、FlatGitHubDarkIJTheme、FlatSpacegrayIJTheme、FlatVuesionIJTheme、FlatXcodeDarkIJTheme、FlatAtomOneDarkIJTheme、FlatGrayIJTheme、FlatArcDarkIJTheme、FlatArcDarkOrangeIJTheme、FlatCarbonIJTheme、FlatCobalt2IJTheme、FlatHighContrastIJTheme、FlatDarkFlatIJTheme、FlatDarkPurpleIJTheme、FlatDraculaIJTheme、FlatGradiantoDarkFuchsiaIJTheme、FlatGradiantoDeepOceanIJTheme、FlatGradiantoMidnightBlueIJTheme、FlatGradiantoNatureGreenIJTheme、FlatGruvboxDarkHardIJTheme
+Themes: FlatIntelliJLaf
+
+#系统+架构：系统配置项 windows|mac os x| linux  架构配置项：amd64|x86_64|amd64|arm|aarch64
+Platform: windows 10:amd64
+
+#简单请求替换插件模板
+Simple_HTTP_Request: |
+  methd: GET
+  url: /ddd
+  haders:
+    - User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36
+  body: a=1
+
+#Yaml Poc插件模板
+Yaml_Poc: |
+  name: poc-yaml-.DS_Store-info
+  transport: http
+  rules:
+    r1:
+      request:
+        method: GET
+        path: /.DS_Store
+        headers:
+          User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36
+      expression: |
+        response.status_code==200
+  output: "发现.DS_Store文件"
+  expression: r1()
+  detail:
+    name: '.DS_Store文件泄露'
+    author: qianxiao996
+    category: 敏感信息泄露
+    subassembly: ALL
+    vuln_id: 无
+    description: '.DS_Store文件泄露'
+    links: []
+#高级HTTP请求插件模板
+Advanced_HTTP_Request: |
+  GET / HTTP/1.1
+  Host: {{Host}}
+  Pragma: no-cache
+  Cache-Control: no-cache
+  User-Agent: {{Random_UserAgent}}
+  Accept-Encoding: gzip, deflate
+  Accept-Language: zh-CN,zh;q=0.9
+  Connection: close
+  Cookie: {{Cookie}}
+
+  {{Body}}
+#Python_Poc插件模板
+Python_Poc: ""
+
+```
 

@@ -98,8 +98,8 @@ public class Conn {
     public static Map<String,Object> get_requests_response_head_body(byte[] req_resp_byte) {
         Map<String,Object> return_sult = new HashMap<>();
         String headersPart = new String(req_resp_byte, StandardCharsets.UTF_8);
-        String[] http_body_head = headersPart.split("\\R\\R");
-        List<String> header_list = Arrays.asList(http_body_head[0].split("\\R"));
+        String[] http_body_head = headersPart.split("\n\n|\r\n\r\n");
+        List<String> header_list = Arrays.asList(http_body_head[0].split("\r\n|\n|\r"));
         return_sult.put("header",header_list);
         if(http_body_head.length>=2){
             return_sult.put("body",http_body_head[1]);
@@ -115,7 +115,7 @@ public class Conn {
         }else{
 
             String response = new String(requestResponse.getResponse());
-            String[] response_ =response.split("\\R");
+            String[] response_ =response.split("\\n");
             String head_line_str= response_[0];
             if(head_line_str.startsWith("HTTP/")){
                 String[] head_line_list = head_line_str.split(" ");

@@ -2,11 +2,11 @@ package burp.scan;
 
 import burp.IHttpRequestResponse;
 import burp.IHttpService;
-import burp.poc.PocEntry;
+import burp.model.poc.PocEntry;
 import burp.rpc.Poc_Request;
 import burp.rpc.Poc_Response;
 import burp.utils.Poc;
-import burp.log.LogEntry;
+import burp.model.log.LogEntry;
 import org.yaml.snakeyaml.Yaml;
 
 import java.net.MalformedURLException;
@@ -17,7 +17,6 @@ import java.util.*;
 import static burp.BurpExtender.callbacks;
 import static burp.BurpExtender.helpers;
 import static burp.Main_Vuln.*;
-import static burp.Main_Vuln.count;
 import static burp.utils.Conn.*;
 import static burp.utils.CustHttpService.GetHttpRequestResponse;
 import static burp.utils.Poc.*;
@@ -82,7 +81,7 @@ public class PocScan {
         }
         return  null;
     }
-    public static LogEntry Scan_Python_Poc(IHttpRequestResponse requestResponse, int toolFlag,String dir_url,PocEntry poc) throws MalformedURLException {
+    public static LogEntry Scan_Python_Poc(IHttpRequestResponse requestResponse, int toolFlag, String dir_url, PocEntry poc) throws MalformedURLException {
         IHttpService httpService = requestResponse.getHttpService();
         String host_url = get_requests_url(requestResponse,false)+dir_url;
         host_url =host_url.replaceAll("//+","/");
@@ -162,7 +161,7 @@ public class PocScan {
         }
         return  null;
     }
-    public static LogEntry Scan_Yaml_Poc(IHttpRequestResponse requestResponse, int toolFlag,String dir_url,PocEntry poc) throws MalformedURLException {
+    public static LogEntry Scan_Yaml_Poc(IHttpRequestResponse requestResponse, int toolFlag, String dir_url, PocEntry poc) throws MalformedURLException {
         Yaml yaml = new Yaml(options);
         Map<String, Object> yamlString = yaml.load(poc.plugins_data);
         Map<String,Map> rules = (Map<String,Map>) yamlString.get("rules");
@@ -264,31 +263,52 @@ public class PocScan {
         return  null;
     }
 
-    public static LogEntry Scan_Simple_HTTP_Request(IHttpRequestResponse messageInfo, int toolFlag,String dir_url,PocEntry poc) throws MalformedURLException {
+    public static LogEntry Scan_Simple_HTTP_Request(IHttpRequestResponse messageInfo, int toolFlag, String dir_url, PocEntry poc) throws MalformedURLException {
         //遍历目录 对每个poc
         Yaml yaml = new Yaml(options);
         Map<String, Object> yamlString = yaml.load(poc.plugins_data);
         Map<String,Object> requests = (Map<String,Object>) yamlString.get("requests");
         Map<String, Object> expression = (Map<String,Object>) yamlString.get("expression");
-        String url  = (String) requests.get("url");
-        String method  = (String) requests.get("method");
-        Map<String,String> headers  = (Map<String, String>) requests.get("headers");
-        List<String> http_headers_info  = Set_Header_Requests(messageInfo,method,dir_url+"/"+url,headers);
-        String body  = (String) requests.get("body");
+        String url;
+        String tihuan_url="/" ;
+        String method=null;
+        String body="";
+        Map<String,String> headers = new HashMap<>();
         byte[] bodyBytes = "".getBytes();
-        if(body==null ){
-            if(is_burp){
-                byte[] requestBytes = messageInfo.getRequest();
-                // 分析请求以获取请求体的偏移量
-                int bodyOffset = helpers.analyzeRequest(messageInfo).getBodyOffset();
-                // 获取请求体
-                bodyBytes = new byte[requestBytes.length - bodyOffset];
-                System.arraycopy(requestBytes, bodyOffset, bodyBytes, 0, requestBytes.length - bodyOffset);
+        if(requests!=null && requests.size()>0){
+            headers  = (Map<String, String>) requests.get("headers");
+            body  = (String) requests.get("body");
+            method  = (String) requests.get("method");
+            url  = (String) requests.get("url");
+            if(url!=null){
+                tihuan_url = dir_url+"/"+url;
+
+            }else{
+                String[] headurl_list = get_requests_head_line(messageInfo);
+                if (headurl_list != null) {
+                    tihuan_url = headurl_list[1];
+                }
             }
-            else{
-                bodyBytes = (byte[]) get_requests_response_head_body(messageInfo.getRequest()).get("body");
+            if(body==null ){
+                if(is_burp){
+                    byte[] requestBytes = messageInfo.getRequest();
+                    // 分析请求以获取请求体的偏移量
+                    int bodyOffset = helpers.analyzeRequest(messageInfo).getBodyOffset();
+                    // 获取请求体
+                    bodyBytes = new byte[requestBytes.length - bodyOffset];
+                    System.arraycopy(requestBytes, bodyOffset, bodyBytes, 0, requestBytes.length - bodyOffset);
+                }
+                else{
+                    bodyBytes = (byte[]) get_requests_response_head_body(messageInfo.getRequest()).get("body");
+                }
+            }
+        }else{
+            String[] headurl_list = get_requests_head_line(messageInfo);
+            if (headurl_list != null) {
+                tihuan_url = headurl_list[1];
             }
         }
+        List<String> http_headers_info  = Set_Header_Requests(messageInfo,method,tihuan_url,headers);
         printDebug("【Scan_Simple_HTTP_Request】【Request】\n"+ String.join("\n", http_headers_info) +"\n\n"+ new String(bodyBytes, StandardCharsets.UTF_8));
         IHttpRequestResponse requestResponse;
         IHttpService iHttpService = messageInfo.getHttpService();
@@ -302,7 +322,7 @@ public class PocScan {
         }else{
             String req_url;
             String temp_url = get_requests_url(messageInfo,false);
-            req_url = temp_url+("/"+dir_url+"/"+url).replaceAll("//+","/");
+            req_url = temp_url+("/"+tihuan_url).replaceAll("//+","/");
             requestResponse =  GetHttpRequestResponse(req_url,http_headers_info,new String(bodyBytes));
             reuslt_url = new URL(req_url);
         }

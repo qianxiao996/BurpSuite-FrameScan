@@ -3,10 +3,17 @@ package burp.utils;
 import burp.IHttpRequestResponse;
 import burp.IHttpService;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -56,11 +63,16 @@ public class CustHttpService {
             }else{
                 requests_raw = req_method+" "+heads_list[1]+" "+heads_list[2]+"\r\n"+String.join("\r\n", all_headers)+"\r\n\r\n"+req_body;
             }
+
+            // 初始化一个信任所有证书的 SSLContext
+//            SSLContext sslContext = createUnsafeSSLContext();
+//            HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
             // 创建 URL 对象
             URL url = new URL(url_str);
 
             // 打开连接
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
             // 设置请求方法为 POST
             connection.setRequestMethod(req_method);
             // 设置允许输出
@@ -102,8 +114,13 @@ public class CustHttpService {
                 }
             }catch (Exception  e)
             {
-                printErr(e.getMessage());
-                printErr(Arrays.toString(e.getStackTrace()));
+                if(connection.getResponseCode()==HttpURLConnection.HTTP_NOT_FOUND){
+
+                }else{
+                    printErr(e.getMessage());
+                    printErr(Arrays.toString(e.getStackTrace()));
+                }
+
             }
             // 关闭连接
             connection.disconnect();
@@ -186,8 +203,43 @@ public class CustHttpService {
         }
         return null;
     }
+    /**
+     * 创建一个信任所有证书的 SSLContext。
+     *
+     * @return SSLContext
+     * @throws NoSuchAlgorithmException 如果算法不存在
+     * @throws KeyManagementException 如果密钥管理器初始化失败
+     */
+    private static SSLContext createUnsafeSSLContext() throws NoSuchAlgorithmException, KeyManagementException {
+        // 创建一个信任所有证书的信任管理器
+        TrustManager[] trustAllCerts = new TrustManager[] {new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType) {
+                // 信任所有客户端证书
+            }
 
-    public static String send_http_get(String urlpath) throws IOException {
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType) {
+                // 信任所有服务器证书
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+        }};
+
+        // 使用信任所有证书的信任管理器初始化 SSLContext
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+        return sslContext;
+    }
+    public static String get_host_ico_http_requests(String urlpath) throws IOException, NoSuchAlgorithmException, KeyManagementException {
+
+
+        // 初始化一个信任所有证书的 SSLContext
+        SSLContext sslContext = createUnsafeSSLContext();
+        HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
         // 创建URL对象
         URL url = new URL(urlpath);
         // 打开连接
@@ -197,15 +249,15 @@ public class CustHttpService {
         // 设置是否允许输入输出流
         connection.setDoInput(true);
         connection.setDoOutput(false);
-        int responseCode ;
-        try{
-            responseCode = connection.getResponseCode();
-        }catch (Exception ex) {
-            printErr("send_http_get Error:"+urlpath+" "+ex.getMessage());
-            return  "";
-        }
+//        int responseCode ;
+//        try{
+//            responseCode = connection.getResponseCode();
+//        }catch (Exception ex) {
+//            printErr("send_http_get Error:"+urlpath+" "+ex.getMessage());
+//            return  "";
+//        }
         StringBuilder content = new StringBuilder();
-        if (responseCode == HttpURLConnection.HTTP_OK) {
+        if(connection.getResponseCode()==HttpURLConnection.HTTP_OK){
             // 读取响应
             BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             String inputLine;
@@ -214,8 +266,10 @@ public class CustHttpService {
                 content.append(inputLine);
             }
             in.close();
+            connection.disconnect();
+        }else{
+            return "";
         }
-        connection.disconnect();
         return content.toString();
     }
 }

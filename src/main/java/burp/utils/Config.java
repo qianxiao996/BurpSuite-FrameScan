@@ -36,13 +36,10 @@ public class Config {
         Global_Config.put("Is_Debug",chkbox_is_debug.isSelected()) ;
         Global_Config.put("WhiteList", textField_white.getText()) ;
         Global_Config.put("BlackList", textField_black.getText()) ;
-        Global_Config.put("EnablePocList", vuln_poc_combox.getSelectedItem()) ;
-        Global_Config.put("DisenableFingerPocList", vuln_disenable_finger_poc_combox.getSelectedItem()) ;
-        enable_poc_list.clear();
-        enable_poc_list =  Poc.Get_Poc(enable_poc_str);
-        jump_finger_poc_list.clear();
-        jump_finger_poc_list =  Poc.Get_Poc(jump_finger_poc_str);
+//        Global_Config.put("EnablePocList", vuln_poc_combox.getSelectedItem()) ;
+//        Global_Config.put("DisenableFingerPocList", vuln_disenable_finger_poc_combox.getSelectedItem()) ;
 
+        Poc.reload_poc();
         Yaml yaml = new Yaml(options);
         String yamlString = yaml.dump(Global_Config);
         try (Writer out = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(Paths.get(Config_PATH)), StandardCharsets.UTF_8))) {
@@ -52,5 +49,6 @@ public class Config {
         }
         JOptionPane.showMessageDialog(null, "配置保存成功！", "提示", JOptionPane.INFORMATION_MESSAGE);
     }
+
 
 }

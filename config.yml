@@ -5,12 +5,11 @@ Enable_Poc: true
 Is_Repeater: true
 WhiteList: baidu.com
 BlackList: www.baidu.com
-Enable_Finger: true
-EnablePocList: 高危漏洞,渗透测试,接口泄露,默认分组,信息泄露
-DisenableFingerPocList: Yaml Poc测试,高级HTTP请求测试,Python  Poc测试
+Enable_Finger: false
 Grpc_Host: localhost
 Grpc_Port: 23333
 Themes: FlatIntelliJLaf
+Platform: windows 10:amd64
 Simple_HTTP_Request: |
   methd: GET
   url: /ddd

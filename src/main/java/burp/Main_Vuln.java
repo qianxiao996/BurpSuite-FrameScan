@@ -1,27 +1,27 @@
 package burp;
 
-import burp.finger.FingerEntry;
-import burp.finger.FingerTableModel;
+import burp.model.finger.FingerEntry;
+import burp.model.finger.FingerTableModel;
 
+import burp.model.group.*;
+import burp.model.poc.PocEntry;
+import burp.model.poc.PocTableModel;
 import burp.rpc.pocGrpc;
-import burp.utils.Config;
-import burp.utils.Poc;
-import burp.log.LogEntry;
-import burp.log.LogTableModel;
-import burp.poc.PocEntry;
-import burp.poc.PocTableModel;
+import burp.utils.*;
+import burp.model.log.LogEntry;
+import burp.model.log.LogTableModel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.RTextScrollPane;
 import org.yaml.snakeyaml.DumperOptions;
-import burp.utils.Finger;
 import org.yaml.snakeyaml.Yaml;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
@@ -51,7 +51,7 @@ public class Main_Vuln{
 
     public static String Config_FILE="config.yml";
     public static  String  app_name =  "FrameScan";
-    public static  String  app_version =  "v2.4";
+    public static  String  app_version =  "v2.5";
     public static  String  app_title =  app_name+ " "+ app_version+" by 浅笑996";
     public static DumperOptions options = new DumperOptions();
     public static List<String> all_scan_url = new ArrayList<>();
@@ -80,8 +80,13 @@ public class Main_Vuln{
     public static JFrame  mainFrame; //子窗口
 
     public static JFrame  mainFrame_Finger; //子窗口
+    public static JFrame  mainFrame_Plugins; //子窗口
+    public static JFrame  mainFrame_Group; //子窗口
 
     public static JTable vuln_poc_table; //表格poc
+
+    public static JTable group_table; //表格poc
+
     public static Map<String,String> finger_ico_hash_map=new HashMap<>();
     public static JTable finger_poc_table; //表格poc
 
@@ -99,6 +104,9 @@ public class Main_Vuln{
 
     public static final LogTableModel model = new LogTableModel();
     public static final PocTableModel model_poc = new PocTableModel();
+
+    public static final GroupTableModel model_group = new GroupTableModel();
+
 
     public static final FingerTableModel model_finger = new FingerTableModel();
 
@@ -130,7 +138,7 @@ public class Main_Vuln{
     public static List<PocEntry>  jump_finger_poc_list = new ArrayList<>();
 
 //    static JTextField statusCodetextField = new JTextField(codeStatus);//白名单文本框
-    public static JComboBox<String> vuln_poc_combox;
+//    public static JComboBox<String> vuln_poc_combox;
 
     //不根据指纹来执行的poc
     public static JComboBox<String> vuln_disenable_finger_poc_combox;
@@ -175,7 +183,8 @@ public class Main_Vuln{
         }
 
     }
-    public static void load_plugins(Object burpExtendergui,JTabbedPane  tab) throws SQLException, ClassNotFoundException {
+    public static void load_plugins(Object burpExtendergui,JTabbedPane  tab) throws SQLException, ClassNotFoundException, IOException {
+
         options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);//通常使用的yaml格式
         options.setDefaultScalarStyle(DumperOptions.ScalarStyle.PLAIN);//标量格式
         jump_finger_poc_str=(String) Global_Config.get("DisenableFingerPocList");
@@ -206,6 +215,17 @@ public class Main_Vuln{
         popupMenu_poc.add(item_poc_edit);
         popupMenu_poc.add(item_poc_delete);
         popupMenu_poc.add(item_poc_relaod);
+
+        JPopupMenu popupMenu_group = new JPopupMenu();
+        JMenuItem item_group_add = new JMenuItem("Add");
+        JMenuItem item_group_edit = new JMenuItem("Edit");
+        JMenuItem item_group_delete = new JMenuItem("Delete");
+        JMenuItem item_group_relaod = new JMenuItem("Reload");
+        popupMenu_group.add(item_group_add);
+        popupMenu_group.add(item_group_edit);
+        popupMenu_group.add(item_group_delete);
+        popupMenu_group.add(item_group_relaod);
+
 
         // 创建右键菜单
         JPopupMenu popupMenu = new JPopupMenu();
@@ -279,8 +299,9 @@ public class Main_Vuln{
 
 
         logTable.getSelectionModel().addListSelectionListener(e -> {
-
-            splitPane_request_response.setDividerLocation(0.5);
+            if(is_burp){
+                splitPane_request_response.setDividerLocation(0.5);
+            }
             List<LogEntry>  all_table_Data= model.getAllValue();
             int row = logTable.getSelectedRow();
             if(!(row >= 0 && row < all_table_Data.size())){
@@ -414,94 +435,118 @@ public class Main_Vuln{
                 textField_white .setForeground(Color.BLACK);
             }
         });
-        JLabel tempJLabel = new JLabel("启用漏洞POC:");
-        String[] items = Poc.get_all_poc_group();
+//        JLabel tempJLabel = new JLabel("启用漏洞POC:");
+//        String[] items = Group.get_all_group();
 //        String[] dir_List = { "0","1", "2","3","4","5"};
-        vuln_poc_combox = new JComboBox<>(items);
+//        vuln_poc_combox = new JComboBox<>(items);
 
         //判断是否所有的items都在数据库分类中
-        List<String> enable_poc_temp_list = Arrays.stream(enable_poc_str.split(","))
-                .collect(Collectors.toList());
-        List<String>  enable_poc_temp=new ArrayList<>();
-        for(String aa :enable_poc_temp_list){
-            boolean baohan_flag = Arrays.asList(items).contains(aa);
-            if (baohan_flag){
-                enable_poc_temp.add(aa);
-            }
-        }
-        enable_poc_str = enable_poc_temp.stream()
-                .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
-                .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
-        //end
-
-        vuln_poc_combox.setEditable(true);
-        vuln_poc_combox.setSelectedItem(enable_poc_str);
-        vuln_poc_combox.setEditable(false);
+//        List<String> enable_poc_temp_list = Arrays.stream(Group.get_all_group())
+//                .collect(Collectors.toList());
+//        List<String>  enable_poc_temp=new ArrayList<>();
+//        for(String aa :enable_poc_temp_list){
+//            boolean baohan_flag = Arrays.asList(items).contains(aa);
+//            if (baohan_flag){
+//                enable_poc_temp.add(aa);
+//            }
+//        }
+//        enable_poc_str = enable_poc_temp.stream()
+//                .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
+//                .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
+//        //end
+//
+//        vuln_poc_combox.setEditable(true);
+//        vuln_poc_combox.setSelectedItem(enable_poc_str);
+//        vuln_poc_combox.setEditable(false);
 
 
 //        printDebug(String.valueOf(enable_poc_list.size()));
         // 添加 ActionListener
-        vuln_poc_combox.addActionListener(e -> {
-            String selectedValue = (String) vuln_poc_combox.getSelectedItem();
-            // 使用 Stream API 将字符串分割成 List
-            List<String> enable_poc_split = Arrays.stream(enable_poc_str.split(","))
-                    .collect(Collectors.toList());
-            if (enable_poc_split.contains(selectedValue)) {
-                enable_poc_split.remove(selectedValue);
-            } else {
-                enable_poc_split.add(selectedValue);
-            }
-            // 使用 Stream API 过滤掉空字符串和 null 值
-            enable_poc_str = enable_poc_split.stream()
-                    .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
-                    .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
+//        vuln_poc_combox.addActionListener(e -> {
+//            String selectedValue = (String) vuln_poc_combox.getSelectedItem();
+//            // 使用 Stream API 将字符串分割成 List
+//            List<String> enable_poc_split = Arrays.stream(enable_poc_str.split(","))
+//                    .collect(Collectors.toList());
+//            if (enable_poc_split.contains(selectedValue)) {
+//                enable_poc_split.remove(selectedValue);
+//            } else {
+//                enable_poc_split.add(selectedValue);
+//            }
+//            // 使用 Stream API 过滤掉空字符串和 null 值
+//            enable_poc_str = enable_poc_split.stream()
+//                    .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
+//                    .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
+//
+//            vuln_poc_combox.setEditable(true);
+//            vuln_poc_combox.setSelectedItem(enable_poc_str);
+//            vuln_poc_combox.setEditable(false);
+//        });
 
-            vuln_poc_combox.setEditable(true);
-            vuln_poc_combox.setSelectedItem(enable_poc_str);
-            vuln_poc_combox.setEditable(false);
-        });
+//        JLabel dislabel = new JLabel("跳过指纹POC:");
+//        vuln_disenable_finger_poc_combox = new JComboBox<>(items);
 
-        JLabel dislabel = new JLabel("跳过指纹POC:");
-        vuln_disenable_finger_poc_combox = new JComboBox<>(items);
+
+        // 创建列表模型
+        DefaultListModel<String> model = new DefaultListModel<>();
+        model.addElement("Item 1");
+        model.addElement("Item 2");
+        model.addElement("Item 3");
+        model.addElement("Item 4");
+        model.addElement("Item 5");
+
+        // 创建JList并设置多选模式
+//        JList<String> list = new JList<>(model);
+//        list.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+
+
 
         //判断是否所有的items都在数据库分类中
-        List<String> disenable_poc_temp_list = Arrays.stream(jump_finger_poc_str.split(","))
-                .collect(Collectors.toList());
-        List<String>  jump_finger_poc_temp=new ArrayList<>();
-        for(String aa :disenable_poc_temp_list){
-            boolean baohan_flag = Arrays.asList(items).contains(aa);
-            if (baohan_flag){
-                jump_finger_poc_temp.add(aa);
-            }
-        }
-        jump_finger_poc_str = jump_finger_poc_temp.stream()
-                .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
-                .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
-        //end
+//        List<String> disenable_poc_temp_list = Arrays.stream(jump_finger_poc_str.split(","))
+//                .collect(Collectors.toList());
+//        List<String>  jump_finger_poc_temp=new ArrayList<>();
+//        for(String aa :disenable_poc_temp_list){
+//            boolean baohan_flag = Arrays.asList(items).contains(aa);
+//            if (baohan_flag){
+//                jump_finger_poc_temp.add(aa);
+//            }
+//        }
+//        jump_finger_poc_str = jump_finger_poc_temp.stream()
+//                .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
+//                .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
+//        //end
 
-        vuln_disenable_finger_poc_combox.setEditable(true);
-        vuln_disenable_finger_poc_combox.setSelectedItem(jump_finger_poc_str);
-        vuln_disenable_finger_poc_combox.setEditable(false);
+//        vuln_disenable_finger_poc_combox.setEditable(true);
+//        vuln_disenable_finger_poc_combox.setSelectedItem(jump_finger_poc_str);
+//        vuln_disenable_finger_poc_combox.setEditable(false);
 
         // 添加 ActionListener
-        vuln_disenable_finger_poc_combox.addActionListener(e -> {
-            String selectedValue = (String) vuln_disenable_finger_poc_combox.getSelectedItem();
-            // 使用 Stream API 将字符串分割成 List
-            List<String> disenable_poc_list = Arrays.stream(jump_finger_poc_str.split(","))
-                    .collect(Collectors.toList());
-            if (disenable_poc_list.contains(selectedValue)) {
-                disenable_poc_list.remove(selectedValue);
-            } else {
-                disenable_poc_list.add(selectedValue);
-            }
-            jump_finger_poc_str = disenable_poc_list.stream()
-                    .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
-                    .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
+//        vuln_disenable_finger_poc_combox.addActionListener(e -> {
+//            String selectedValue = (String) vuln_disenable_finger_poc_combox.getSelectedItem();
+//            // 使用 Stream API 将字符串分割成 List
+//            List<String> disenable_poc_list = Arrays.stream(jump_finger_poc_str.split(","))
+//                    .collect(Collectors.toList());
+//            if (disenable_poc_list.contains(selectedValue)) {
+//                disenable_poc_list.remove(selectedValue);
+//            } else {
+//                disenable_poc_list.add(selectedValue);
+//            }
+//            jump_finger_poc_str = disenable_poc_list.stream()
+//                    .filter(s -> s != null && !s.isEmpty()) // 过滤掉 null 和空字符串
+//                    .collect(Collectors.joining(",")); // 使用 "," 连接列表中的元素
+//
+//            vuln_disenable_finger_poc_combox.setEditable(true);
+//            vuln_disenable_finger_poc_combox.setSelectedItem(jump_finger_poc_str);
+//            vuln_disenable_finger_poc_combox.setEditable(false);
+//
+//        });
+        JButton config_plugins_export = new JButton("导出插件");
+        config_plugins_export.addActionListener(e -> {
+            Plugins.plugins_edit("export");
+        });
 
-            vuln_disenable_finger_poc_combox.setEditable(true);
-            vuln_disenable_finger_poc_combox.setSelectedItem(jump_finger_poc_str);
-            vuln_disenable_finger_poc_combox.setEditable(false);
-
+        JButton config_plugins_import = new JButton("导入插件");
+        config_plugins_import.addActionListener(e -> {
+            Plugins.plugins_edit("import");
         });
         JButton reload_config_button = new JButton("重载配置");
         JButton save_config_button = new JButton("保存配置");
@@ -509,9 +554,12 @@ public class Main_Vuln{
             try {
                 load_config();
             } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                printErr(ex.getMessage());
+                printErr(Arrays.toString(ex.getStackTrace()));
             }
         });
+        JButton log_clear_button = new JButton("清空日志");
+        log_clear_button.addActionListener(e -> app_log.setText(""));
         save_config_button.addActionListener(e -> save_config());
         splitPane_request_response = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
         if(is_burp){
@@ -597,33 +645,24 @@ public class Main_Vuln{
         jpanel_config_.add(Add_Component(gbl,textField_black,gbc,1,2,1,4,1,0));
 
         //启用poc
-        jpanel_config_.add(Add_Component(gbl,tempJLabel,gbc,0,3,1,1,0,0));
-        jpanel_config_.add(Add_Component(gbl,vuln_poc_combox,gbc,1,3,1,4,1,0));
+//        jpanel_config_.add(Add_Component(gbl,tempJLabel,gbc,0,3,1,1,0,0));
+//        jpanel_config_.add(Add_Component(gbl,vuln_poc_combox,gbc,1,3,1,4,1,0));
 
         //跳过poc
-        jpanel_config_.add(Add_Component(gbl,dislabel,gbc,0,4,1,1,0,0));
-        jpanel_config_.add(Add_Component(gbl,vuln_disenable_finger_poc_combox,gbc,1,4,1,4,1,0));
+//        jpanel_config_.add(Add_Component(gbl,dislabel,gbc,0,4,1,1,0,0));
+//        jpanel_config_.add(Add_Component(gbl,new JScrollPane(list),gbc,1,4,1,4,1,0));
 
 
         //按钮行
 //        gbc.fill=GridBagConstraints.NORTH;//组件填充显示区域，当格子有剩余空间时，填充空间
 //        gbc.anchor = GridBagConstraints.CENTER; // 对齐方式
 
-        jpanel_config_.add(Add_Component(gbl,reload_config_button,gbc,1,5,1,1,0,0));
-        jpanel_config_.add(Add_Component(gbl,save_config_button,gbc,3,5,1,1,0,0));
 
-
-
-
-        //漏洞poc
-
-
-
-
-//        jpanel_config_.add(Add_Component(gbl,app_log_label,gbc,0,6,1,5,1,0));
-//
-//
-//        jpanel_config_.add(Add_Component(gbl,app_log_scrollPane,gbc,0,7,1,5,1,1));
+        jpanel_config_.add(Add_Component(gbl,config_plugins_export,gbc,0,3,1,1,0,0));
+        jpanel_config_.add(Add_Component(gbl,config_plugins_import,gbc,1,3,1,1,0,0));
+        jpanel_config_.add(Add_Component(gbl,reload_config_button,gbc,2,3,1,1,0,0));
+        jpanel_config_.add(Add_Component(gbl,save_config_button,gbc,3,3,1,1,0,0));
+        jpanel_config_.add(Add_Component(gbl,log_clear_button,gbc,4,3,1,1,0,0));
 
 
         JPanel setting_split_11 = new JPanel();
@@ -646,8 +685,9 @@ public class Main_Vuln{
 //        JPanel tab_index = new JPanel();
 //        tab_index.setLayout(new GridLayout(1,1,5,5));
         Poc.reload_read_poc_Data();
-
         Finger.reload_read_finger_Data();
+
+        Group.reload_read_group_Data();
 
         try {
             load_config();
@@ -676,6 +716,9 @@ public class Main_Vuln{
 
 
 
+
+
+
 //        JButton vuln_poc_button_edit  = new JButton("Edit");
         item_poc_edit.addActionListener(e -> {
             int[] id = vuln_poc_table.getSelectedRows();
@@ -690,21 +733,29 @@ public class Main_Vuln{
 //        JButton vuln_poc_button_delete  = new JButton("Delete");
 
         item_poc_delete.addActionListener(e -> {
-            int[] id = vuln_poc_table.getSelectedRows();
-            if (id.length>0){
-                PocEntry temp = (PocEntry) model_poc.getValueRow(id[0]);
-                String message = Poc.delete_poc_data(temp);
-                JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
-                try {
-                    Poc.reload_read_poc_Data();
-                } catch (SQLException ex) {
-                    printErr(String.valueOf(ex));
+            int option = JOptionPane.showConfirmDialog(null,
+                    "确认删除吗?",
+                    "Delete",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (option == JOptionPane.YES_OPTION) {
+                int[] id = vuln_poc_table.getSelectedRows();
+                if (id.length>0){
+                    for(int i :id){
+                        PocEntry temp = (PocEntry) model_poc.getValueRow(i);
+                        String message = Poc.delete_poc_data(temp);
+                    }
+                    try {
+                        Poc.reload_read_poc_Data();
+                    } catch (SQLException ex) {
+                        printErr(String.valueOf(ex));
+                    }
+                    JOptionPane.showMessageDialog(null, "删除成功", "提示", JOptionPane.INFORMATION_MESSAGE);
+                }else{
+                    JOptionPane.showMessageDialog(null, "请选择一条数据!", "警告", JOptionPane.WARNING_MESSAGE);
                 }
-
-            }else{
-                JOptionPane.showMessageDialog(null, "请选择一条数据!", "警告", JOptionPane.WARNING_MESSAGE);
+            } else {
             }
-
         });
 //        JButton vuln_poc_button_reload  = new JButton("Reload");
         item_poc_relaod.addActionListener(e -> {
@@ -714,6 +765,64 @@ public class Main_Vuln{
                 printErr(String.valueOf(ex));
             }
         });
+
+
+        item_group_add.addActionListener(e -> {
+            int last_id;
+            // 获取最后一个元素
+            if (model_group.getRowCount()>0) {
+                List<GroupEntry>  all_value = model_group.getAllValue();
+                last_id = all_value.get(all_value.size() - 1).id+1;
+            } else {
+                last_id=1;
+            }
+            GroupEntry null_Data = new GroupEntry(last_id,"","漏洞POC",true,false);
+            Group.Group_edit(null_Data);
+        });
+        item_group_edit.addActionListener(e -> {
+            int[] id = group_table.getSelectedRows();
+            if (id.length>0){
+                GroupEntry temp = (GroupEntry) model_group.getValueRow(id[0]);
+                Group.Group_edit(temp);
+            }else{
+                JOptionPane.showMessageDialog(null, "请选择一条数据!", "警告", JOptionPane.WARNING_MESSAGE);
+            }
+
+        });
+        item_group_delete.addActionListener(e -> {
+            int option = JOptionPane.showConfirmDialog(null,
+                    "确认删除吗?",
+                    "Delete",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (option == JOptionPane.YES_OPTION) {
+                int[] id = group_table.getSelectedRows();
+                if (id.length>0){
+                    for(int i :id){
+                        GroupEntry temp = (GroupEntry) model_group.getValueRow(i);
+                        String message = Group.delete_Group_data(temp);
+                    }
+                    try {
+                        Group.reload_read_group_Data();
+                    } catch (SQLException ex) {
+                        printErr(String.valueOf(ex));
+                    }
+                    JOptionPane.showMessageDialog(null, "删除成功！", "提示", JOptionPane.INFORMATION_MESSAGE);
+                }else{
+                    JOptionPane.showMessageDialog(null, "请选择一条数据!", "警告", JOptionPane.WARNING_MESSAGE);
+                }
+            } else {
+            }
+
+        });
+        item_group_relaod.addActionListener(e -> {
+            try {
+                Group.reload_read_group_Data();
+            } catch (SQLException ex) {
+                printErr(String.valueOf(ex));
+            }
+        });
+
 //        vuln_button_panel.add(vuln_poc_button_add);
 //        vuln_button_panel.add(Box.createVerticalStrut(10) );
 //        vuln_button_panel.add(vuln_poc_button_edit);
@@ -735,6 +844,36 @@ public class Main_Vuln{
                 }
             }
         });
+        // 注册自定义单元格渲染器
+
+        group_table = new JTable(model_group);
+        group_table.setBackground(Color.WHITE);
+
+        // 设置表头
+        group_table.getColumnModel().getColumn(3).setHeaderRenderer(new CheckHeaderCellRenderer(group_table,3));
+
+        group_table.getColumnModel().getColumn(4).setHeaderRenderer(new CheckHeaderCellRenderer(group_table,4));
+
+//        group_table.getColumnModel().getColumn(3).setCellEditor(new CheckBoxEditor());
+
+//        group_table.getColumnModel().getColumn(3).setCellRenderer(new CheckBoxRenderer());
+//        group_table.getColumnModel().getColumn(3).setCellEditor(new CheckBoxEditor());
+//
+//        group_table.getColumnModel().getColumn(4).setCellRenderer(new CheckBoxRenderer());
+//        group_table.getColumnModel().getColumn(4).setCellEditor(new CheckBoxEditor());
+
+
+        group_table.setAutoCreateRowSorter(true);
+        group_table.setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
+        group_table.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON3) { // 如果是鼠标右键
+                    popupMenu_group.show(group_table, e.getX(), e.getY()); // 显示右键菜单
+                }
+            }
+        });
+
 
 
         JScrollPane poc_scrollPane = new JScrollPane(vuln_poc_table); //给列表添加滚动条
@@ -750,11 +889,25 @@ public class Main_Vuln{
 
 
 
-        JSplitPane splitPanes_vuln_poc = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-//        splitPanes_vuln_poc.setLeftComponent(vuln_button_panel);//上面
-        splitPanes_vuln_poc.setRightComponent(poc_scrollPane);//下面
-        splitPanes_vuln_poc.setEnabled(false);
-        splitPanes_vuln_poc.setBorder(new EmptyBorder(10, 10, 10, 10)); // 设置外边距为10
+        JScrollPane group_scrollPane = new JScrollPane(group_table); //给列表添加滚动条
+        group_scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        group_scrollPane.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON3) { // 如果是鼠标右键
+                    popupMenu_group.show(group_scrollPane, e.getX(), e.getY()); // 显示右键菜单
+                }
+            }
+        });
+
+
+
+//
+//        JSplitPane splitPanes_vuln_poc = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+////        splitPanes_vuln_poc.setLeftComponent(vuln_button_panel);//上面
+//        splitPanes_vuln_poc.setRightComponent(poc_scrollPane);//下面
+//        splitPanes_vuln_poc.setEnabled(false);
+//        splitPanes_vuln_poc.setBorder(new EmptyBorder(10, 10, 10, 10)); // 设置外边距为10
         //指纹poc
 //        JPanel finger_button_panel = new JPanel();
 //        finger_button_panel.setLayout(new BoxLayout(finger_button_panel, BoxLayout.Y_AXIS));
@@ -786,21 +939,29 @@ public class Main_Vuln{
 //        JButton finger_poc_button_delete  = new JButton("Delete");
 
         item_finger_delete.addActionListener(e -> {
-            int[] id = finger_poc_table.getSelectedRows();
-            if (id.length>0){
-                FingerEntry temp = (FingerEntry) model_finger.getValueRow(id[0]);
-                String message = Finger.delete_finger_data(temp);
-                JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
-                try {
-                    Finger.reload_read_finger_Data();
-                } catch (SQLException ex) {
-                    printDebug(String.valueOf(ex));
+            int option = JOptionPane.showConfirmDialog(null,
+                    "确认删除吗?",
+                    "Delete",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (option == JOptionPane.YES_OPTION) {
+                int[] id = finger_poc_table.getSelectedRows();
+                if (id.length>0){
+                    for(int i :id){
+                        FingerEntry temp = (FingerEntry) model_finger.getValueRow(i);
+                        String message = Finger.delete_finger_data(temp);
+                    }
+                    try {
+                        Finger.reload_read_finger_Data();
+                    } catch (SQLException ex) {
+                        printDebug(String.valueOf(ex));
+                    }
+                    JOptionPane.showMessageDialog(null, "删除成功！", "提示", JOptionPane.INFORMATION_MESSAGE);
+                }else{
+                    JOptionPane.showMessageDialog(null, "请选择一条数据!", "警告", JOptionPane.WARNING_MESSAGE);
                 }
-
-            }else{
-                JOptionPane.showMessageDialog(null, "请选择一条数据!", "警告", JOptionPane.WARNING_MESSAGE);
+            } else {
             }
-
         });
 //        JButton finger_poc_button_reload  = new JButton("Reload");
         item_finger_relaod.addActionListener(e -> {
@@ -913,6 +1074,7 @@ public class Main_Vuln{
         tab.addTab("漏洞探测",tab_index);
         tab.addTab("漏洞POC",poc_scrollPane);
         tab.addTab("指纹POC",finger_scrollPane);
+        tab.addTab("分组管理",group_scrollPane);
         tab.addTab("插件设置",setting);
     }
     public static IHttpRequestResponse createHttpRequestResponse(String url_str) throws Exception {
@@ -1060,17 +1222,17 @@ public class Main_Vuln{
         }
         black_URL = (String)Global_Config.get("BlackList");
         textField_black.setText( (String)Global_Config.get("BlackList"));
-        String[] items = Poc.get_all_poc_group();
-        vuln_poc_combox.removeAllItems();
-        vuln_disenable_finger_poc_combox.removeAllItems();
-        for(String i :items){
-            vuln_poc_combox.addItem(i);
-            vuln_disenable_finger_poc_combox.addItem(i);
-        }
-        enable_poc_list.clear();
-        enable_poc_list =  Poc.Get_Poc(enable_poc_str);
-        jump_finger_poc_list.clear();
-        jump_finger_poc_list =  Poc.Get_Poc(jump_finger_poc_str);
+//        String[] items = Group.get_all_group();
+//        vuln_poc_combox.removeAllItems();
+//        vuln_disenable_finger_poc_combox.removeAllItems();
+//        for(String i :items){
+//            vuln_poc_combox.addItem(i);
+//            vuln_disenable_finger_poc_combox.addItem(i);
+//        }
+//        enable_poc_list.clear();
+//        enable_poc_list =  Poc.Get_Poc(enable_poc_str);
+//        jump_finger_poc_list.clear();
+//        jump_finger_poc_list =  Poc.Get_Poc(jump_finger_poc_str);
         printMsg("Config Load Success！");
 
     }
@@ -1100,11 +1262,13 @@ public class Main_Vuln{
         JMenuItem jMenu_scan = new JMenuItem("Send to Scan");
         JMenuItem jMenu_poc = new JMenuItem("Send to PocScan");
         JMenuItem jMenu_finger = new JMenuItem("Send to FingerScan");
+        JMenuItem jMenu_add_poc = new JMenuItem("Add Vuln Poc");
+
         jMenu_scan.addActionListener(e -> {
             if(Main_Vuln.switchs_poc) {
                 finger_scan(1024,responses[0],true);
             }else {
-                printDebug("插件关闭");
+                printMsg("插件关闭");
             }
 
         });
@@ -1112,7 +1276,7 @@ public class Main_Vuln{
             if(Main_Vuln.switchs_poc) {
                 poc_scan(1024,responses[0]);
             }else {
-                printDebug("插件关闭");
+                printMsg("插件关闭");
             }
 
         });
@@ -1120,12 +1284,20 @@ public class Main_Vuln{
             if(Main_Vuln.switchs_finger) {
                 finger_scan(1024,responses[0],false);
             }else {
-                printDebug("插件关闭");
+                printMsg("插件关闭");
             }
         });
+
+        jMenu_add_poc.addActionListener(e -> {
+            Poc.one_add_vuln_poc(responses[0]);
+        });
+
+
+
         menu_list.add(jMenu_scan);
         menu_list.add(jMenu_poc);
         menu_list.add(jMenu_finger);
+        menu_list.add(jMenu_add_poc);
         return menu_list;
     }
 

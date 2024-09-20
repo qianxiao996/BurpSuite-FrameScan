@@ -2,7 +2,9 @@ package burp.utils;
 
 import burp.IHttpRequestResponse;
 import burp.IResponseInfo;
-import burp.poc.PocEntry;
+import burp.Main_Vuln;
+import burp.model.finger.FingerEntry;
+import burp.model.poc.PocEntry;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
 import org.fife.ui.rtextarea.RTextScrollPane;
@@ -53,33 +55,50 @@ public class Poc {
         String sql =  "delete  from poc where id = "+temp.id;
         return Sql.Delete(sql);
     }
-    public static List<PocEntry> Get_Poc(String groupstr) {
+
+
+    public static List<PocEntry> Get_Poc(String[] group_list) {
+        List<PocEntry> return_result =new ArrayList<>();
         //逗号分隔成列表进行查询
-        String[] parts = groupstr.split(",");
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < parts.length; i++) {
-            sb.append("'").append(parts[i]).append("'");
-            if (i < parts.length - 1) {
-                sb.append(",");
+//        List<String>  array_list = Arrays.asList(string_list);
+        List<PocEntry> allpoc = model_poc.getAllValue();
+        for (PocEntry  poc:allpoc){
+            for (String  group:group_list) {
+                if(poc.group.contains(group)){
+                    return_result.add(poc);
+                }
             }
         }
-        List<PocEntry> resultList = new ArrayList<>();
-        String sql = "SELECT * FROM poc WHERE `group` IN ("+ sb +")";
-//        Main_Vuln.printDebug(sql);
-        List<Map<String, Object>> sql_result = Sql.Select(sql);
-        for (Map<String, Object> item : sql_result) {
-            int id = (int)item.get("id");
-            String group= (String) item.get("group");
-            String type=(String) item.get("type");
-            String name= (String) item.get("name");
-            int dir_count= (int)item.get("dir_count");
-            String plugin_type=(String) item.get("plugin_type");
-            String plugins_data= (String) item.get("plugins_data");
-            String plugins_description=(String) item.get("description");
-            resultList.add(new PocEntry(id,group,type,name,dir_count,plugin_type,plugins_data,plugins_description));
-        }
-        return resultList;
+        return  return_result;
     }
+
+//    public static List<PocEntry> Get_Poc(String[] groupstr) {
+//        //逗号分隔成列表进行查询
+//        String[] parts = groupstr.split(",");
+//        StringBuilder sb = new StringBuilder();
+//        for (int i = 0; i < parts.length; i++) {
+//            sb.append("'").append(parts[i]).append("'");
+//            if (i < parts.length - 1) {
+//                sb.append(",");
+//            }
+//        }
+//        List<PocEntry> resultList = new ArrayList<>();
+//        String sql = "SELECT * FROM poc WHERE `group` IN ("+ sb +")";
+////        Main_Vuln.printDebug(sql);
+//        List<Map<String, Object>> sql_result = Sql.Select(sql);
+//        for (Map<String, Object> item : sql_result) {
+//            int id = (int)item.get("id");
+//            String group= (String) item.get("group");
+//            String type=(String) item.get("type");
+//            String name= (String) item.get("name");
+//            int dir_count= (int)item.get("dir_count");
+//            String plugin_type=(String) item.get("plugin_type");
+//            String plugins_data= (String) item.get("plugins_data");
+//            String plugins_description=(String) item.get("description");
+//            resultList.add(new PocEntry(id,group,type,name,dir_count,plugin_type,plugins_data,plugins_description));
+//        }
+//        return resultList;
+//    }
     public static String[] get_all_poc_type(String value){
         String sql =  "select DISTINCT `type` from poc";
         if(!Objects.equals(value, "")){
@@ -94,21 +113,13 @@ public class Poc {
         }
         return resultArray;
     }
-    public static String[] get_all_poc_group(){
-        String sql =  "select DISTINCT `group` from poc";
-        List<Map<String, Object>> sql_result = Sql.Select(sql);
-        String[] resultArray = new String[sql_result.size()];
-        int i=0;
-        for (Map<String, Object> item : sql_result) {
-            resultArray[i] = (String) item.get("group");
-            i++;
-        }
-        return resultArray;
-    }
-    private static String Save_Poc_Data(PocEntry pocData) {
+
+    public static String Save_Poc_Data(PocEntry pocData) throws SQLException {
         String url = "jdbc:sqlite:/"+ SQL_DB_PATH;
+        Group.Add_Group(pocData.group,"漏洞POC");
 //        printDebug(pocData.toString());
         try (Connection connection = DriverManager.getConnection(url);
+
              PreparedStatement pstmt = connection.prepareStatement(
                      "INSERT OR REPLACE INTO poc (`id`,`group`,`type`,`name`,`dir_count`,`plugin_type`,`plugins_data`,`description`) VALUES (?,?,?,?,?, ?, ?,?)")) {
             pstmt.setInt(1, pocData.id);
@@ -127,11 +138,55 @@ public class Poc {
             } else {
                 return "保存失败!";
             }
-
         } catch (SQLException e) {
             printErr(e.getMessage());
             printErr( Arrays.toString(e.getStackTrace()));
             return Arrays.toString(e.getStackTrace());
+        }
+    }
+
+    public static void Save_Poc_Data_All(List<PocEntry> pocEntries) {
+        String url = "jdbc:sqlite:" + Main_Vuln.SQL_DB_PATH;
+        try (Connection connection = DriverManager.getConnection(url)) {
+            // 开启事务
+            connection.setAutoCommit(false);
+            String sql = "INSERT OR REPLACE INTO poc (`id`,`group`,`type`,`name`,`dir_count`,`plugin_type`,`plugins_data`,`description`) VALUES (?,?,?,?,?, ?, ?,?)";
+            try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+                for (PocEntry poc : pocEntries) {
+                    pstmt.setInt(1, poc.id);
+                    pstmt.setString(2, poc.group);
+                    pstmt.setString(3, poc.type);
+                    pstmt.setString(4, poc.name);
+                    pstmt.setInt(5, poc.dir_count);
+                    pstmt.setString(6, poc.plugin_type);
+                    pstmt.setString(7, poc.plugins_data);
+                    pstmt.setString(8, poc.description);
+                    pstmt.addBatch(); // 添加到批处理中
+                }
+                // 执行批处理
+                int[] rowsAffected = pstmt.executeBatch();
+                // 提交事务
+                connection.commit();
+                // 检查是否有数据被影响
+                boolean anySuccess = false;
+                for (int rows : rowsAffected) {
+                    if (rows > 0) {
+                        anySuccess = true;
+                        break;
+                    }
+                }
+                if (anySuccess) {
+                } else {
+                }
+            } catch (SQLException e) {
+                // 回滚事务
+                connection.rollback();
+                printErr(e.getMessage());
+                printErr(Arrays.toString(e.getStackTrace()));
+            }
+        } catch (SQLException e) {
+            printErr(e.getMessage());
+            printErr(Arrays.toString(e.getStackTrace()));
         }
     }
     public static void poc_edit(PocEntry poc_data) {
@@ -164,7 +219,7 @@ public class Poc {
 
 
         JLabel label_vuln_group = new JLabel("漏洞分组：");
-        String[] items_group = get_all_poc_group();
+        String[] items_group = Group.get_all_group();
         JComboBox<String> comboBox_group = new JComboBox<>(items_group);
         // 设置ComboBox为可编辑
         comboBox_group.setEditable(true);
@@ -304,19 +359,17 @@ public class Poc {
                 poc_data.plugins_data = textArea_request.getText();
             }
             poc_data.description = text_poc_description.getText();
-            String message = Save_Poc_Data(poc_data);
+            String message = null;
+            try {
+                message = Save_Poc_Data(poc_data);
+            } catch (SQLException ex) {
+                printErr(ex.getMessage());
+                printErr(Arrays.toString(ex.getStackTrace()));
+            }
             try {
                 reload_read_poc_Data();
-                String[] items1 = Poc.get_all_poc_group();
-                vuln_poc_combox.removeAllItems();
-                vuln_disenable_finger_poc_combox.removeAllItems();
-                for(String i : items1){
-                    vuln_poc_combox.addItem(i);
-                    vuln_disenable_finger_poc_combox.addItem(i);
-                }
-//                    vuln_poc_combox.setModel(new DefaultComboBoxModel<String>(items));
-//                    vuln_disenable_finger_poc_combox.setModel(new DefaultComboBoxModel<String>(items));
-
+                Group.reload_read_group_Data();
+                Poc.reload_poc();
             } catch (SQLException ex) {
                 printErr(ex.getMessage());
                 printErr(Arrays.toString(ex.getStackTrace()));
@@ -388,9 +441,17 @@ public class Poc {
         Update_Poo(is_enable_label_list,text_vuln_value,text_vuln_status_code,comBox_vuln_scope,comBox_vuln_method,textArea_request,poc_data.plugin_type,poc_data);
 //        jpanel_poc_.setBorder(new EmptyBorder(10, 10, 10, 10)); // 设置外边距为10
         mainFrame.getContentPane().add(jpanel_poc_);
-        mainFrame.setSize(1000, 1100);
+        mainFrame.setSize(1000, 900);
         mainFrame.setLocationRelativeTo(null);
         mainFrame.setVisible(true);
+    }
+    public static void reload_poc() {
+        enable_poc_list.clear();
+        String[] get_finger_group  =  Group.get_group_by_type("vuln");
+        enable_poc_list =  Poc.Get_Poc(get_finger_group);
+        jump_finger_poc_list.clear();
+        String[] get_finger_jump_group  =  Group.get_group_by_type("finger");
+        jump_finger_poc_list =  Poc.Get_Poc(get_finger_jump_group);
     }
     public static Component Add_Component(GridBagLayout gbl,Component comp,GridBagConstraints gbc,int gridx,int gridy,int gridheight,int gridwidth,int weight_x,int weight_y)
     {
@@ -403,7 +464,7 @@ public class Poc {
         gbl.setConstraints(comp, gbc);
         return comp;
     }
-    public static void Update_Poo(List<JLabel> is_enable_label_list,JTextField text_vuln_value,JTextField text_vuln_status_code,JComboBox comBox_vuln_scope,JComboBox comBox_vuln_method,RSyntaxTextArea textArea_request,String yuyan,PocEntry poc_data){
+    public static void Update_Poo(List<JLabel> is_enable_label_list, JTextField text_vuln_value, JTextField text_vuln_status_code, JComboBox comBox_vuln_scope, JComboBox comBox_vuln_method, RSyntaxTextArea textArea_request, String yuyan, PocEntry poc_data){
 //        DumperOptions options = new DumperOptions();
 //        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);//通常使用的yaml格式
 //        options.setDefaultScalarStyle(DumperOptions.ScalarStyle.PLAIN);//标量格式
@@ -707,4 +768,62 @@ public class Poc {
         return list;
     }
 
+    public static void one_add_vuln_poc(IHttpRequestResponse messageInfo){
+        Map head_body =  get_requests_response_head_body(messageInfo.getRequest());
+        String req_body = (String) head_body.get("body");
+        List<String> header_list = (List<String>) head_body.get("header");
+        List<String> result_header = new ArrayList<>();
+        for(String line  : header_list){
+            String[] line_list = line.split(":");
+            if(line_list.length>=2){
+                switch (line_list[0].trim()) {
+                    case "Host":
+                        line_list[1] = "{{Host}}";
+                        result_header.add(line_list[0] + ": " + line_list[1]);
+                        break;
+                    case "Cookie":
+                        line_list[1] = "{{Cookie}}";
+                        result_header.add(line_list[0] + ": " + line_list[1]);
+                        break;
+                    case "User-Agent":
+                        line_list[1] = "{{Random_UserAgent}}";
+                        result_header.add(line_list[0] + ": " + line_list[1]);
+                        break;
+                    default:
+                        result_header.add(line);
+                        break;
+                }
+            }else{
+                result_header.add(line);
+            }
+        }
+        String requests_raw;
+        if(result_header.isEmpty()){
+            requests_raw = "GET / HTTP/1.1"+"\r\n\r\n"+req_body;
+        }else{
+            requests_raw = String.join("\r\n", result_header)+"\r\n\r\n"+req_body;
+        }
+
+        int last_id;
+        // 获取最后一个元素
+        if (model_poc.getRowCount()>0) {
+            List<PocEntry>  all_value = model_poc.getAllValue();
+            last_id = all_value.get(all_value.size() - 1).id+1;
+        } else {
+            last_id=1;
+        }
+        int statu_code = helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode();
+        Yaml yaml = new Yaml(options);
+        Map<String, Object> temp = new HashMap<>();
+        temp.put("requests_raw", requests_raw);
+        Map<String, Object> temp_expression = new HashMap<>();
+        temp_expression.put("scope", "response body");
+        temp_expression.put("match_method","Contain" );
+        temp_expression.put("match_value", "");
+        temp_expression.put("status_code", statu_code);
+        temp.put("expression", temp_expression);
+        String request_data = yaml.dump(temp);
+        PocEntry null_Data = new PocEntry(last_id,"默认分组","","一键添加POC",1,"高级HTTP请求", request_data,"");
+        Poc.poc_edit(null_Data);
+    }
 }

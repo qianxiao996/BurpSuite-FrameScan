@@ -1,6 +1,6 @@
 package burp.scan;
 import burp.IHttpRequestResponse;
-import burp.log.LogEntry;
+import burp.model.log.LogEntry;
 import java.util.Arrays;
 
 import static burp.BurpExtender.callbacks;

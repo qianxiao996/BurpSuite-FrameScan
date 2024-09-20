@@ -2,11 +2,13 @@ package burp.scan;
 
 import burp.IHttpRequestResponse;
 import burp.IHttpService;
-import burp.finger.FingerEntry;
-import burp.log.LogEntry;
+import burp.model.finger.FingerEntry;
+import burp.model.log.LogEntry;
 
 import java.io.IOException;
 import java.net.URL;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +21,7 @@ import static burp.utils.Conn.*;
 import static burp.utils.Finger.*;
 
 public class FingerScan {
-    public static LogEntry Check_Finger(int toolFlag, IHttpRequestResponse messageInfo) throws IOException {
+    public static LogEntry Check_Finger(int toolFlag, IHttpRequestResponse messageInfo) throws IOException, NoSuchAlgorithmException, KeyManagementException {
         List<FingerEntry> all_finger = model_finger.getAllValue();
         if(stop_finger_scan || all_finger.isEmpty()){
             return  null;

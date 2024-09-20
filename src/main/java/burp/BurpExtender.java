@@ -10,8 +10,7 @@ import java.util.List;
 import javax.swing.*;
 import burp.utils.Config;
 
-import static burp.Main_Vuln.app_title;
-import static burp.Main_Vuln.channel;
+import static burp.Main_Vuln.*;
 
 
 public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScannerCheck, IMessageEditorController,IContextMenuFactory,IExtensionStateListener
@@ -42,7 +41,7 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
         helpers = callbacks.getHelpers();
 
         // set our extension name
-        callbacks.setExtensionName(Main_Vuln.app_name);
+        callbacks.setExtensionName(app_name+ " "+ app_version);
 
         // create our UI
         SwingUtilities.invokeLater(new Runnable()
@@ -69,6 +68,9 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
                     Main_Vuln.load_plugins(BurpExtender.this,tab);
                 } catch (SQLException | ClassNotFoundException e) {
                     stdout.println(e);
+                } catch (IOException e) {
+                    printErr(e.getMessage());
+                    printErr(Arrays.toString(e.getStackTrace()));
                 }
 
                 MainPane.add(tab);
@@ -92,7 +94,7 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
     @Override
     public String getTabCaption()
     {
-        return Main_Vuln.app_name;
+        return app_name;
     }
 
     @Override

@@ -14,6 +14,7 @@ import com.formdev.flatlaf.intellijthemes.materialthemeuilite.*;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 public class MainApplication extends JFrame {
@@ -158,7 +159,7 @@ public class MainApplication extends JFrame {
         JTabbedPane tab = new JTabbedPane();
         try {
             Main_Vuln.load_plugins(MainApplication.this,tab);
-        } catch (SQLException | ClassNotFoundException e) {
+        } catch (SQLException | ClassNotFoundException | IOException e) {
             System.out.println(e.getMessage());
         }
         add(tab);
