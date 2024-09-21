@@ -1,6 +1,10 @@
 # FrameScan | burp插件
 FrameScan插件是一款插件化的指纹POC扫描插件。
 
+## 温馨提示
+
+正常使用请关闭debug，不然可能会白屏哦~
+
 ## 工具使用
 
 1、使用Burpsuit或者双击jar包。

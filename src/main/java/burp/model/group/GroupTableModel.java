@@ -1,7 +1,5 @@
 package burp.model.group;
 
-import burp.model.finger.FingerEntry;
-import burp.utils.Finger;
 import burp.utils.Group;
 import burp.utils.Poc;
 

@@ -1,8 +1,4 @@
 package burp;
-
-
-//import org.jb2011.lnf.beautyeye.BeautyEyeLNFHelper;
-
 import com.formdev.flatlaf.*;
 import com.formdev.flatlaf.intellijthemes.*;
 import com.formdev.flatlaf.intellijthemes.FlatArcDarkIJTheme;

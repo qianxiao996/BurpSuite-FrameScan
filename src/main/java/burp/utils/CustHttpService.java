@@ -96,13 +96,17 @@ public class CustHttpService {
             // 读取响应
             List<String> response_header = new ArrayList<>();
             for (String key : connection.getHeaderFields().keySet()) {
-                if(!Objects.equals(key, "Accept-Ranges")) {
+//                if(!Objects.equals(key, "Accept-Ranges")) {
                     if (key == null) {
-                        response_header.add(connection.getHeaderField(null));
+                        if(connection.getHeaderField(null).startsWith("HTTP/")){
+                            response_header.add(0, connection.getHeaderField(null));
+                        }else{
+                            response_header.add(connection.getHeaderField(null));
+                        }
                     } else {
                         response_header.add(key + ": " + connection.getHeaderField(key));
                     }
-                }
+//                }
             }
             String  response_header_str = String.join("\r\n",response_header);
             StringBuilder response_body = new StringBuilder();

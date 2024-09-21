@@ -82,6 +82,7 @@ public class BurpExtender  implements IBurpExtender, ITab, IHttpListener,IScanne
                 callbacks.registerHttpListener(BurpExtender.this);
                 callbacks.registerScannerCheck(BurpExtender.this);
                 callbacks.registerContextMenuFactory(BurpExtender.this);
+//                callbacks.registerMessageEditorTabFactory(BurpExtender.this);
             }
 
         });

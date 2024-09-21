@@ -23,7 +23,7 @@ import static burp.utils.Poc.*;
 
 public class PocScan {
     public static LogEntry Scan_Advanced_HTTP_Request(IHttpRequestResponse messageInfo, int toolFlag, String dir_url, PocEntry poc) throws MalformedURLException {
-
+        IHttpRequestResponse souce_requestResponse =  messageInfo;
         Yaml yaml = new Yaml(options);
         Map<String, Object> yamlString = yaml.load(poc.plugins_data);
         String  requests_raw = (String) yamlString.get("requests_raw");
@@ -77,7 +77,7 @@ public class PocScan {
         Boolean vuln_scan_result = Match_poc_data(requestResponse,expression);
         if(vuln_scan_result){
             printMsg("【Scan_Advanced_HTTP_Request】【Match Success】URL:"+reuslt_url+"【POC】"+poc.name+"【Match loaction】"+expression.get("scope")+"【Match Method】"+expression.get("match_method")+"【Match Value】"+expression.get("match_value"));
-            return new LogEntry(count, tool_name, requestResponse, reuslt_url, "", "", "", 0,GetMessageStatusCode(requestResponse), "", poc.name, poc.id);
+            return new LogEntry(count, tool_name, souce_requestResponse, reuslt_url, "", "", "", 0,GetMessageStatusCode(requestResponse), "", poc.name, poc.id,requestResponse);
         }
         return  null;
     }
@@ -87,6 +87,7 @@ public class PocScan {
         host_url =host_url.replaceAll("//+","/");
         URL result_url =new URL(host_url);
         try{
+            if(host_url==null || poc==null || poc.plugins_data==null) return null;
             Poc_Request requests = Poc_Request.newBuilder()
                     .setPocType("Python")
                     .setUrl(host_url)
@@ -98,7 +99,7 @@ public class PocScan {
                 IHttpRequestResponse result_rr = new IHttpRequestResponse() {
                     @Override
                     public byte[] getRequest() {
-                        return ("METHOD " + dir_url + " HTTP/1.1\n" + poc.plugins_data).getBytes(StandardCharsets.UTF_8);
+                        return ("URL: " + dir_url + "\n" + poc.plugins_data).getBytes(StandardCharsets.UTF_8);
                     }
                     @Override
                     public void setRequest(byte[] bytes) {
@@ -150,7 +151,7 @@ public class PocScan {
                     tool_name = callbacks.getToolName(toolFlag);
                 }
                 printMsg("【Scan_Python_Poc】【Match Success】URL:"+result_url+"【POC】"+poc.name+"【Response_result】"+response.getResult());
-                return new LogEntry(count, tool_name, result_rr, result_url, "", "", "", 0,0, "", poc.name,poc.id);
+                return new LogEntry(count, tool_name, requestResponse, result_url, "", "", "", 0,0, "", poc.name,poc.id,result_rr);
             }
             if (response != null) {
                 printDebug("【Scan_Python_Poc】【Response】【"+poc.name+"】【"+result_url+"】"+ false +" "+response.getResult());
@@ -187,6 +188,7 @@ public class PocScan {
         String aaa_url = host_url+dir_url;
         URL result_url =new URL(aaa_url);
         try{
+            if(host_url==null || poc==null || poc.plugins_data==null) return null;
             Poc_Request requests = Poc_Request.newBuilder()
                     .setPocType("Yaml")
                     .setUrl(host_url)
@@ -203,7 +205,7 @@ public class PocScan {
                 IHttpRequestResponse result_rr =new IHttpRequestResponse() {
                     @Override
                     public byte[] getRequest() {
-                        return  ("METHOD "+dir_url+" HTTP/1.1\n"+poc.plugins_data).getBytes(StandardCharsets.UTF_8);
+                        return  ("URL: " + dir_url + "\n" +poc.plugins_data).getBytes(StandardCharsets.UTF_8);
                     }
 
                     @Override
@@ -252,7 +254,7 @@ public class PocScan {
                     }
                 };
                 printMsg("【Scan_Yaml_Poc】【Match Success】URL:"+result_url+"【POC】"+poc.name+"【Response_result】"+response.getResult());
-                return new LogEntry(count, tool_name, result_rr, result_url, "", "", "", 0, 0, "", poc.name,poc.id);
+                return new LogEntry(count, tool_name, requestResponse, result_url, "", "", "", 0, 0, "", poc.name,poc.id,result_rr);
             }
             printDebug("【Scan_Yaml_Poc】【Response】【"+poc.name+"】【"+result_url+"】"+ false +" "+response.getResult());
 //        channel.shutdownNow();
@@ -335,7 +337,7 @@ public class PocScan {
         Boolean vuln_scan_result = Match_poc_data(requestResponse,expression);
         if(vuln_scan_result){
             printMsg("【Scan_Simple_HTTP_Request】【Match Success】URL:"+reuslt_url+"【POC】"+poc.name+"【Match loaction】"+expression.get("scope")+"【Match Method】"+expression.get("match_method")+"【Match Value】"+expression.get("match_value"));
-            return new LogEntry(count, tool_name, requestResponse, reuslt_url, "", "", "", 0, GetMessageStatusCode(requestResponse), "", poc.name,poc.id);
+            return new LogEntry(count, tool_name, messageInfo, reuslt_url, "", "", "", 0, GetMessageStatusCode(requestResponse), "", poc.name,poc.id,requestResponse);
         }
         return null;
     }
@@ -407,7 +409,7 @@ public class PocScan {
                     }
                     if (temp != null){
                         if(!temp.vuln_scan_result.isEmpty()){
-                            printDebug("【"+poc.plugin_type+"】【Host】"+list.get(urlLength)+"【Poc Scan】"+poc.name+"【Result】"+temp.vuln_scan_result);
+                            printDebug("【"+poc.plugin_type+"】【Host】"+host+list.get(urlLength)+"【Poc Scan】"+poc.name+"【Result】"+temp.vuln_scan_result);
                             temp.finger_scan_result = finger;
                             temp.vuln_scan_result = poc.name;
                             model.addValueAt(temp);
@@ -415,7 +417,7 @@ public class PocScan {
                             is_vuln=true;
                         }
                     } else{
-                        printDebug("【"+poc.plugin_type+"】【Host】"+list.get(urlLength)+"【Poc Scan】"+poc.name+"【Result】False");
+                        printDebug("【"+poc.plugin_type+"】【Host】"+host+list.get(urlLength)+"【Poc Scan】"+poc.name+"【Result】False");
                     }
                 }
             }

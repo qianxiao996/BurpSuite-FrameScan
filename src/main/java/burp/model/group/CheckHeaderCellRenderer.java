@@ -1,18 +1,11 @@
 package burp.model.group;
-
-import burp.utils.Group;
-
 import javax.swing.*;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellRenderer;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.List;
-
-import static burp.Main_Vuln.printErr;
 
 public class CheckHeaderCellRenderer implements TableCellRenderer {
     GroupTableModel tableModel;

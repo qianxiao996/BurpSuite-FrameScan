@@ -558,7 +558,7 @@ public class Poc {
         List<String> finger_list = Arrays.asList(findr_str.split("\\$\\$\\$"));
         List<PocEntry> all_enale_poc = new ArrayList<>();
         for (PocEntry poc : enable_poc_list) {
-            if (finger_list.contains(poc.type) || Objects.equals(poc.type, "ALL")) {
+            if (finger_list.contains(poc.type) || Objects.equals(poc.type.toLowerCase(), "all")) {
                 all_enale_poc.add(poc);
             }
         }

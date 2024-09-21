@@ -27,6 +27,7 @@ public class FingerScan {
             return  null;
         }
         IHttpService httpService = messageInfo.getHttpService();
+        IHttpRequestResponse soucrce_messageInfo =  messageInfo;
         // 获取主机名
         String host_url = get_requests_url(messageInfo,false);
 
@@ -76,7 +77,7 @@ public class FingerScan {
         String enable_poc_str = String.join("$$$", all_finger_result);
         printDebug("【Match End】"+reuslt_url+"【Enable_poc_str】"+enable_poc_str);
         if (!enable_poc_str.isEmpty()){
-            return new LogEntry(count, tool_name, messageInfo, reuslt_url, "", "", "", 0, GetMessageStatusCode(messageInfo), enable_poc_str, "",-1);
+            return new LogEntry(count, tool_name, soucrce_messageInfo, reuslt_url, "", "", "", 0, GetMessageStatusCode(messageInfo), enable_poc_str, "",-1,messageInfo);
 //            return new LogEntry(count, tool_name, callbacks.saveBuffersToTempFiles(messageInfo), helpers.analyzeRequest(messageInfo).getUrl(), "", "", "", 0, (int) (helpers.analyzeResponse(messageInfo.getResponse()).getStatusCode()), enable_poc_str, "");
         }else{
             return  null;

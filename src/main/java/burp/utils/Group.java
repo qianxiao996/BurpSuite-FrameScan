@@ -81,7 +81,10 @@ public class Group {
         String url = "jdbc:sqlite:/"+ Main_Vuln.SQL_DB_PATH;
         try (Connection connection = DriverManager.getConnection(url);
              PreparedStatement pstmt = connection.prepareStatement(
-                     "INSERT OR REPLACE INTO `group` (`id`,`name`,`type`,`is_finger_poc`,`is_finger_jump_poc`) VALUES (?,?,?, ?,?)")) {
+                     "INSERT INTO `group` (`name`, `type`, `is_finger_poc`, `is_finger_jump_poc`) VALUES (?, ?, ?, ?) " +
+                             "ON CONFLICT(name) DO UPDATE SET " +
+                             "type = EXCLUDED.type, ")) {
+
             pstmt.setInt(1, Groupdata.id);
             pstmt.setString(2, Groupdata.name);
             pstmt.setString(3, Groupdata.type);

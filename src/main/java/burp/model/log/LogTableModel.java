@@ -1,7 +1,6 @@
 package burp.model.log;
 
 
-import burp.model.log.LogEntry;
 
 import javax.swing.table.AbstractTableModel;
 import java.util.ArrayList;
@@ -91,6 +90,14 @@ public class LogTableModel  extends AbstractTableModel {
     }
     public List<LogEntry> getAllValue(){
         return  table_log_data;
+    }
+    public LogEntry getValueByid(int id){
+        for(LogEntry i :table_log_data){
+            if(i.id==id){
+                return i;
+            }
+        }
+        return  null;
     }
 
 }

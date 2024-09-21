@@ -1,16 +1,11 @@
 package burp.model.finger;
 
-import burp.model.poc.PocEntry;
 import burp.utils.Finger;
-import burp.utils.Poc;
 
 import javax.swing.table.AbstractTableModel;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-
-import static burp.utils.Poc.reload_read_poc_Data;
-
 public  class FingerTableModel extends AbstractTableModel {
     private final String[] columnNames = {"序号", "漏洞分类","匹配方式", "匹配位置","匹配值","重要程度","CMS分组"};
     public static List<FingerEntry> all_finger_data = new ArrayList<>();//用于展现poc

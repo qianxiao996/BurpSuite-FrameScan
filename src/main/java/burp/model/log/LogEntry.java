@@ -17,10 +17,10 @@ public class LogEntry
     final int response_code;
     public String finger_scan_result;
     public String vuln_scan_result;
-
     public int vuln_poc_id;
+    public final IHttpRequestResponse  poc_requestResponse;
 
-    public LogEntry(int id, String tool, IHttpRequestResponse requestResponse, URL url, String parameter, String value, String data_md5, int times, Integer response_code, String finger_scan_result, String vuln_scan_result,int vuln_poc_id)
+    public LogEntry(int id, String tool, IHttpRequestResponse requestResponse, URL url, String parameter, String value, String data_md5, int times, Integer response_code, String finger_scan_result, String vuln_scan_result,int vuln_poc_id,IHttpRequestResponse  poc_requestResponse)
     {
         this.id = id;
         this.tool = tool;
@@ -34,5 +34,8 @@ public class LogEntry
         this.finger_scan_result = finger_scan_result;
         this.vuln_scan_result = vuln_scan_result;
         this.vuln_poc_id = vuln_poc_id;
+        this.poc_requestResponse = poc_requestResponse;
+
+
     }
 }

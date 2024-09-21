@@ -45,13 +45,14 @@ import static burp.utils.Conn.Get_Random_UserAgent;
 import static burp.utils.CustHttpService.GetHttpRequestResponse;
 import static burp.utils.Poc.Add_Component;
 import static burp.scan.Scan.*;
+import static burp.utils.Poc.reload_poc;
 
 public class Main_Vuln{
     public static String SQL_DB_FILE="data.db";
 
     public static String Config_FILE="config.yml";
     public static  String  app_name =  "FrameScan";
-    public static  String  app_version =  "v2.5";
+    public static  String  app_version =  "v2.6";
     public static  String  app_title =  app_name+ " "+ app_version+" by 浅笑996";
     public static DumperOptions options = new DumperOptions();
     public static List<String> all_scan_url = new ArrayList<>();
@@ -98,9 +99,13 @@ public class Main_Vuln{
     public static JCheckBox chkbox_proxy;
     public static IMessageEditor requestViewer;
     public static IMessageEditor responseViewer;
+//    public static  CustomMessageEditorTabFactory  tabFactory;  //自定义POC tab
 
     public static RSyntaxTextArea responseViewer_1 = new RSyntaxTextArea();
     public static RSyntaxTextArea requestViewer_1 = new RSyntaxTextArea();
+
+    public static RSyntaxTextArea poc_responseViewer_1 = new RSyntaxTextArea();
+    public static RSyntaxTextArea poc_requestViewer_1 = new RSyntaxTextArea();
 
     public static final LogTableModel model = new LogTableModel();
     public static final PocTableModel model_poc = new PocTableModel();
@@ -280,6 +285,8 @@ public class Main_Vuln{
             }else{
                 responseViewer_1.setText("");
                 requestViewer_1.setText("");
+                poc_responseViewer_1.setText("");
+                poc_requestViewer_1.setText("");
             }
 //                out_log.setText(""); // 清楚logList的内容
             logList.clear();
@@ -302,42 +309,45 @@ public class Main_Vuln{
             if(is_burp){
                 splitPane_request_response.setDividerLocation(0.5);
             }
-            List<LogEntry>  all_table_Data= model.getAllValue();
+//            List<LogEntry>  all_table_Data= model.getAllValue();
             int row = logTable.getSelectedRow();
-            if(!(row >= 0 && row < all_table_Data.size())){
+            if(!(row >= 0 && row < model.getRowCount())){
                 return;
             }
             int id = (int)logTable.getValueAt(row,0);
-            LogEntry logEntry = null;
-            for(LogEntry i : all_table_Data){
-                if(i.id==id) {
-                    logEntry = i;
-                    break;
-                }
-            }
+            LogEntry logEntry = model.getValueByid(id);
+//            for(LogEntry i : all_table_Data){
+//                if(i.id==id) {
+//                    logEntry = i;
+//                    break;
+//                }
+//            }
             if(logEntry!=null)
             {
                 if (is_burp){
+                    //设置一个日志id，后台取
                     requestViewer.setMessage(logEntry.requestResponse.getRequest(), true);
                     responseViewer.setMessage(logEntry.requestResponse.getResponse(), false);
                 }else{
                     PocEntry poc = model_poc.getValueByPocid(logEntry.vuln_poc_id);
                     if(poc!=null){
                         if(Objects.equals(poc.plugin_type, "Yaml Poc")){
-                            requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_YAML);
+                            poc_requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_YAML);
                         } else if (Objects.equals(poc.plugin_type, "Python Poc")) {
-                            requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PYTHON);
+                            poc_requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_PYTHON);
                         }else{
-                            requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
+                            poc_requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
                         }
+                        poc_responseViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
                     }else{
-                        requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
-                        responseViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
+                        poc_requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
+                        poc_responseViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
                     }
                     requestViewer_1.setText(new String(logEntry.requestResponse.getRequest()));
                     responseViewer_1.setText(new String(logEntry.requestResponse.getResponse()));
+                    poc_requestViewer_1.setText(new String(logEntry.poc_requestResponse.getRequest()));
+                    poc_responseViewer_1.setText(new String(logEntry.poc_requestResponse.getResponse()));
                 }
-
                 currentlyDisplayedItem = logEntry.requestResponse;
             }
         });
@@ -565,18 +575,27 @@ public class Main_Vuln{
         if(is_burp){
             requestViewer =  callbacks.createMessageEditor((IMessageEditorController) burpExtendergui, false);
             responseViewer =  callbacks.createMessageEditor((IMessageEditorController) burpExtendergui, false);
+            // 创建自定义标签页工厂
+//            tabFactory = new CustomMessageEditorTabFactory(callbacks, (IMessageEditorController) burpExtendergui);
+            // 将自定义标签页工厂添加到请求和响应编辑器
+            // 注册自定义消息编辑器标签
+            callbacks.registerMessageEditorTabFactory((controller, editable) -> new CustomMessageEditorTab(callbacks, controller));
+//            callbacks.registerMessageEditorTabFactory(tabFactory);
             splitPane_request_response.setLeftComponent(requestViewer.getComponent());//添加在左面
             splitPane_request_response.setRightComponent(responseViewer.getComponent());//添加在右面
+            splitPane_request_response.setResizeWeight(0.5); // 左右两边各占50%
         }else{
-            JTabbedPane request_messageeditor = new JTabbedPane();
             JPanel  tab_requests = new JPanel();
             tab_requests.setLayout(new GridLayout(1,1,5,5));
+            JPanel  tab_response = new JPanel();
+            tab_response.setLayout(new GridLayout(1,1,5,5));
             requestViewer_1.setEditable(false);
             requestViewer_1.setLineWrap(true);
             requestViewer_1.setCodeFoldingEnabled(true);
             responseViewer_1.setEditable(false);
             responseViewer_1.setLineWrap(true);
             responseViewer_1.setCodeFoldingEnabled(true);
+
 
             requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
             responseViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
@@ -590,16 +609,46 @@ public class Main_Vuln{
             jscroll_responseViewer.setBorder(null);
             requestViewer_1.setBorder(null);
             responseViewer_1.setBorder(null);
-//            responseViewer_1.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 
             tab_requests.add(jscroll_requestViewer);
-            request_messageeditor.addTab("Requests",tab_requests);
-
-            JTabbedPane response_messageeditor = new JTabbedPane();
-            JPanel  tab_response = new JPanel();
-            tab_response.setLayout(new GridLayout(1,1,5,5));
             tab_response.add(jscroll_responseViewer);
+
+
+            //poc
+            JPanel  tab_poc_requests = new JPanel();
+            tab_poc_requests.setLayout(new GridLayout(1,1,5,5));
+
+            JPanel  tab_poc_response = new JPanel();
+            tab_poc_response.setLayout(new GridLayout(1,1,5,5));
+            poc_requestViewer_1.setEditable(false);
+            poc_requestViewer_1.setLineWrap(true);
+            poc_requestViewer_1.setCodeFoldingEnabled(true);
+            poc_responseViewer_1.setEditable(false);
+            poc_responseViewer_1.setLineWrap(true);
+            poc_responseViewer_1.setCodeFoldingEnabled(true);
+
+
+            poc_requestViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
+            poc_responseViewer_1.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_HTML);
+
+            RTextScrollPane jscroll_requestViewer_poc = new RTextScrollPane(poc_requestViewer_1);
+            RTextScrollPane jscroll_responseViewer_poc = new RTextScrollPane(poc_responseViewer_1);
+            //设置 垂直滚动条需要时显示
+            jscroll_requestViewer_poc.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+            jscroll_responseViewer_poc.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+            jscroll_requestViewer_poc.setBorder(null);
+            jscroll_responseViewer_poc.setBorder(null);
+            poc_requestViewer_1.setBorder(null);
+            poc_responseViewer_1.setBorder(null);
+            tab_poc_requests.add(jscroll_requestViewer_poc);
+            tab_poc_response.add(jscroll_responseViewer_poc);
+//            responseViewer_1.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
+            JTabbedPane request_messageeditor = new JTabbedPane();
+            request_messageeditor.addTab("Requests",tab_requests);
+            request_messageeditor.addTab("FS Poc",tab_poc_requests);
+            JTabbedPane response_messageeditor = new JTabbedPane();
             response_messageeditor.addTab("Response",tab_response);
+            response_messageeditor.addTab("FS Poc",tab_poc_response);
             splitPane_request_response.setLeftComponent(request_messageeditor);//添加在左面
             splitPane_request_response.setRightComponent(response_messageeditor);//添加在右面
         }
@@ -1222,17 +1271,7 @@ public class Main_Vuln{
         }
         black_URL = (String)Global_Config.get("BlackList");
         textField_black.setText( (String)Global_Config.get("BlackList"));
-//        String[] items = Group.get_all_group();
-//        vuln_poc_combox.removeAllItems();
-//        vuln_disenable_finger_poc_combox.removeAllItems();
-//        for(String i :items){
-//            vuln_poc_combox.addItem(i);
-//            vuln_disenable_finger_poc_combox.addItem(i);
-//        }
-//        enable_poc_list.clear();
-//        enable_poc_list =  Poc.Get_Poc(enable_poc_str);
-//        jump_finger_poc_list.clear();
-//        jump_finger_poc_list =  Poc.Get_Poc(jump_finger_poc_str);
+        reload_poc();
         printMsg("Config Load Success！");
 
     }
