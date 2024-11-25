@@ -49,6 +49,7 @@ public class CustomMessageEditorTab implements IMessageEditorTab {
             if (content != null) {
 //                List<LogEntry>  all_table_Data= model.getAllValue();
                 int row = Main_Vuln.logTable.getSelectedRow();
+                row =Main_Vuln.logTable.convertRowIndexToModel(row);
                 if(!(row >= 0 && row < model.getRowCount())){
                     return;
                 }

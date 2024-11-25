@@ -92,7 +92,6 @@ public  class FingerTableModel extends AbstractTableModel {
     public   void  addValueAt(FingerEntry value)
     {
         all_finger_data.add(value);
-        fireTableDataChanged();
     }
     public static void save_data_to_db() throws SQLException {
         System.out.println("8888");

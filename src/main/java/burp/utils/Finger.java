@@ -60,6 +60,7 @@ public class Finger {
             FingerEntry temp = new FingerEntry(id,cms,method,location,keyword,isImportant,type);
             model_finger.addValueAt(temp);
         }
+        model_finger.fireTableDataChanged();
         printMsg("Finger Data Load Suceess！");
     }
 
@@ -223,19 +224,15 @@ public class Finger {
                 printErr(ex.getMessage());
                 printErr(Arrays.toString(ex.getStackTrace()));
             }
-            try {
-                reload_read_finger_Data();
-            } catch (SQLException ex) {
-                printErr(ex.getMessage());
-                printErr(Arrays.toString(ex.getStackTrace()));
-            }
             JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
-            mainFrame_Finger.setVisible(false);
-            try {
-                Finger.reload_read_finger_Data();
-                Group.reload_read_group_Data();
-            } catch (SQLException ex) {
-                printErr(String.valueOf(ex));
+            if (message.contains("保存成功")) {
+                mainFrame_Finger.setVisible(false);
+                try {
+                    Finger.reload_read_finger_Data();
+                    Group.reload_read_group_Data();
+                } catch (SQLException ex) {
+                    printErr(String.valueOf(ex));
+                }
             }
         });
 

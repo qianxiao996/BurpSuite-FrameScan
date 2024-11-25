@@ -39,6 +39,10 @@ import static burp.utils.Poc.countString;
 
 public class Group {
     public static void Add_Group(String  name,String type) {
+        List result = get_group_by_name(name,type);
+        if(!result.isEmpty()){
+            return;
+        }
         int last_id;
         // 获取最后一个元素
         if (model_group.getRowCount()>0) {
@@ -49,7 +53,6 @@ public class Group {
         }
         GroupEntry _Data = new GroupEntry(last_id,name,type,true,false);
         Group.Save_Group_Data(_Data);
-
     }
 
 
@@ -74,6 +77,7 @@ public class Group {
             Boolean is_finger_jump_poc = (is_finger_jump_poc_bool != 0) ? Boolean.TRUE : Boolean.FALSE;
             GroupEntry temp = new GroupEntry(id,name,type,is_finger_poc,is_finger_jump_poc);
             model_group.addValueAt(temp);
+            model_group.fireTableDataChanged();
         }
         printMsg("Group Data Load Suceess！");
     }
@@ -81,23 +85,15 @@ public class Group {
         String url = "jdbc:sqlite:/"+ Main_Vuln.SQL_DB_PATH;
         try (Connection connection = DriverManager.getConnection(url);
              PreparedStatement pstmt = connection.prepareStatement(
-                     "INSERT INTO `group` (`name`, `type`, `is_finger_poc`, `is_finger_jump_poc`) VALUES (?, ?, ?, ?) " +
-                             "ON CONFLICT(name) DO UPDATE SET " +
-                             "type = EXCLUDED.type, ")) {
-
+                     "INSERT INTO `group` (`id`,`name`, `type`, `is_finger_poc`, `is_finger_jump_poc`) VALUES (?, ?, ?, ?,?) " +
+                             "ON CONFLICT(id) DO UPDATE SET " +
+                             "type = EXCLUDED.type, is_finger_poc = EXCLUDED.is_finger_poc, is_finger_jump_poc = EXCLUDED.is_finger_jump_poc")) {
+            // 设置PreparedStatement参数，注意这里没有设置id
             pstmt.setInt(1, Groupdata.id);
             pstmt.setString(2, Groupdata.name);
             pstmt.setString(3, Groupdata.type);
-            if(Groupdata.is_finger_poc){
-                pstmt.setInt(4, 1);
-            }else{
-                pstmt.setInt(4, 0);
-            }
-            if(Groupdata.is_finger_jump_poc){
-                pstmt.setInt(5, 1);
-            }else{
-                pstmt.setInt(5, 0);
-            }
+            pstmt.setInt(4, Groupdata.is_finger_poc ? 1 : 0);
+            pstmt.setInt(5, Groupdata.is_finger_jump_poc ? 1 : 0);
             // 执行更新或插入操作
             int rowsAffected = pstmt.executeUpdate();
             if (rowsAffected > 0) {
@@ -210,19 +206,17 @@ public class Group {
                 Group_data.is_finger_jump_poc=false;
             }
             String message = Save_Group_Data(Group_data);
-            try {
-                reload_read_group_Data();
-            } catch (SQLException ex) {
-                printErr(ex.getMessage());
-                printErr(Arrays.toString(ex.getStackTrace()));
-            }
             JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
-            mainFrame_Group.setVisible(false);
-            try {
-                Group.reload_read_group_Data();
-            } catch (SQLException ex) {
-                printErr(String.valueOf(ex));
+            if (message.contains("保存成功")) {
+                mainFrame_Group.setVisible(false);
+                try {
+                    Group.reload_read_group_Data();
+                } catch (SQLException ex) {
+                    printErr(String.valueOf(ex));
+                }
             }
+
+
         });
         Group_button_cancal.addActionListener(e -> mainFrame_Group.setVisible(false));
         JPanel jpanel_Group_ = new JPanel();
@@ -291,6 +285,20 @@ public class Group {
             i++;
         }
         return resultArray;
+    }
+
+    public static  List<Map<String, Object>>get_group_by_name(String name,String type){
+        String sql;
+        if(Objects.equals(type, "vuln")){
+            sql =  "select DISTINCT * from `group` where name = '"+name+"' and type='漏洞POC'";
+
+        } else if (Objects.equals(type, "finger")) {
+            sql =  "select DISTINCT * from `group` where name = '"+name+"' and type='指纹POC'";
+        }else {
+            sql =  "select DISTINCT * from `group` where name ='"+name+"'";
+        }
+        List<Map<String, Object>> sql_result = Sql.Select(sql);
+        return  sql_result;
     }
 
 

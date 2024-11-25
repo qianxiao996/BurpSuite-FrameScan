@@ -52,7 +52,7 @@ public class Main_Vuln{
 
     public static String Config_FILE="config.yml";
     public static  String  app_name =  "FrameScan";
-    public static  String  app_version =  "v2.6";
+    public static  String  app_version =  "v2.7";
     public static  String  app_title =  app_name+ " "+ app_version+" by 浅笑996";
     public static DumperOptions options = new DumperOptions();
     public static List<String> all_scan_url = new ArrayList<>();
@@ -770,9 +770,11 @@ public class Main_Vuln{
 
 //        JButton vuln_poc_button_edit  = new JButton("Edit");
         item_poc_edit.addActionListener(e -> {
-            int[] id = vuln_poc_table.getSelectedRows();
-            if (id.length>0){
-                PocEntry temp = (PocEntry) model_poc.getValueRow(id[0]);
+//            int[] id = vuln_poc_table.getSelectedRows();
+            int id = vuln_poc_table.getSelectedRow();
+            int selectedModelRow =vuln_poc_table.convertRowIndexToModel(id);
+            if (id>0){
+                PocEntry temp = (PocEntry) model_poc.getValueRow(selectedModelRow);
                 Poc.poc_edit(temp);
 
             }else{
@@ -791,7 +793,8 @@ public class Main_Vuln{
                 int[] id = vuln_poc_table.getSelectedRows();
                 if (id.length>0){
                     for(int i :id){
-                        PocEntry temp = (PocEntry) model_poc.getValueRow(i);
+                        int selectedModelRow =vuln_poc_table.convertRowIndexToModel(i);
+                        PocEntry temp = (PocEntry) model_poc.getValueRow(selectedModelRow);
                         String message = Poc.delete_poc_data(temp);
                     }
                     try {
@@ -830,8 +833,10 @@ public class Main_Vuln{
         });
         item_group_edit.addActionListener(e -> {
             int[] id = group_table.getSelectedRows();
+
             if (id.length>0){
-                GroupEntry temp = (GroupEntry) model_group.getValueRow(id[0]);
+                int selectedModelRow =group_table.convertRowIndexToModel(id[0]);
+                GroupEntry temp = (GroupEntry) model_group.getValueRow(selectedModelRow);
                 Group.Group_edit(temp);
             }else{
                 JOptionPane.showMessageDialog(null, "请选择一条数据!", "警告", JOptionPane.WARNING_MESSAGE);
@@ -846,9 +851,11 @@ public class Main_Vuln{
 
             if (option == JOptionPane.YES_OPTION) {
                 int[] id = group_table.getSelectedRows();
+
                 if (id.length>0){
                     for(int i :id){
-                        GroupEntry temp = (GroupEntry) model_group.getValueRow(i);
+                        int selectedModelRow =group_table.convertRowIndexToModel(i);
+                        GroupEntry temp = (GroupEntry) model_group.getValueRow(selectedModelRow);
                         String message = Group.delete_Group_data(temp);
                     }
                     try {
@@ -976,9 +983,14 @@ public class Main_Vuln{
 //        JButton finger_poc_button_edit  = new JButton("Edit");
 
         item_finger_edit.addActionListener(e -> {
-            int[] id = finger_poc_table.getSelectedRows();
-            if (id.length>0){
-                FingerEntry temp = (FingerEntry) model_finger.getValueRow(id[0]);
+//            int id = finger_poc_table.getSelectedRows();
+            int selectedViewRow = finger_poc_table.getSelectedRow();
+//            printMsg("id:"+id);
+
+            if (selectedViewRow>0){
+//                FingerEntry temp = (FingerEntry) model_finger.getValueRow(id[0]);
+                int selectedModelRow =finger_poc_table.convertRowIndexToModel(selectedViewRow);
+                FingerEntry temp = (FingerEntry) model_finger.getValueRow(selectedModelRow);
                 Finger.finger_edit(temp);
 
             }else{
@@ -997,7 +1009,8 @@ public class Main_Vuln{
                 int[] id = finger_poc_table.getSelectedRows();
                 if (id.length>0){
                     for(int i :id){
-                        FingerEntry temp = (FingerEntry) model_finger.getValueRow(i);
+                        int selectedModelRow =finger_poc_table.convertRowIndexToModel(i);
+                        FingerEntry temp = (FingerEntry) model_finger.getValueRow(selectedModelRow);
                         String message = Finger.delete_finger_data(temp);
                     }
                     try {

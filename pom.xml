@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.qianxiao996.tools.burpextend</groupId>
     <artifactId>FrameScan</artifactId>
-    <version>2.6</version>
+    <version>2.7</version>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>${java.version}</maven.compiler.source>

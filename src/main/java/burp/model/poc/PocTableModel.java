@@ -93,7 +93,6 @@ public  class PocTableModel extends AbstractTableModel {
     public   void  addValueAt(burp.model.poc.PocEntry value)
     {
         all_poc_data.add(value);
-        fireTableDataChanged();
     }
 
     public burp.model.poc.PocEntry getValueByPocid(int id){

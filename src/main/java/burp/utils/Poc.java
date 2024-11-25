@@ -48,6 +48,7 @@ public class Poc {
             String plugins_description = (String) item.get("description");
             model_poc.addValueAt(new PocEntry(id,group,type,name,dir_count,plugin_type,plugins_data,plugins_description));
         }
+        model_poc.fireTableDataChanged();
         printMsg("POC Data Load Suceess！");
 
     }
@@ -375,7 +376,7 @@ public class Poc {
                 printErr(Arrays.toString(ex.getStackTrace()));
             }
             JOptionPane.showMessageDialog(null, message, "提示", JOptionPane.INFORMATION_MESSAGE);
-            if(message.contains("保存成功")){
+            if (message != null && message.contains("保存成功")) {
                 mainFrame.setVisible(false);
                 try {
                     Poc.reload_read_poc_Data();

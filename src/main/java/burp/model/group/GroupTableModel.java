@@ -89,7 +89,6 @@ public  class GroupTableModel extends AbstractTableModel {
     public   void  addValueAt(burp.model.group.GroupEntry value)
     {
         all_group_data.add(value);
-        fireTableDataChanged();
     }
 
     public burp.model.group.GroupEntry getValueByGroupid(int id){
